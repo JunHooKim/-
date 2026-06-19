@@ -859,7 +859,7 @@ async function renderAdmin(){
     : '<div class="empty-state">대기 중인 회원이 없어요</div>';
   const members=store.profiles.filter(u=>u.status==='approved'&&u.role!=='leader');
   document.getElementById('adminMembers').innerHTML=members.length
-    ? members.map(u=>`<div class="admin-row"><div class="admin-info"><div class="admin-name">${u.name}</div></div><div class="admin-actions"><button class="btn-del" onclick="requestDelete('${u.id}')">삭제</button></div></div>`).join('')
+    ? members.map(u=>`<div class="admin-row"><div class="admin-info"><div class="admin-name">${u.name}</div></div><div class="admin-actions"><button class="btn-ok" onclick="setLeader('${u.id}')">리더 지정</button><button class="btn-del" onclick="requestDelete('${u.id}')">삭제</button></div></div>`).join('')
     : '<div class="empty-state">승인된 멤버가 없어요</div>';
   const jobs=await fetchJobs();
   const allApps=[];
@@ -876,6 +876,18 @@ async function renderAdmin(){
 
 async function approveUser(id){ await sb.from('profiles').update({status:'approved'}).eq('id',id); showToast('승인했어요'); renderAdmin(); }
 async function denyUser(id){ await sb.from('profiles').update({status:'denied'}).eq('id',id); showToast('거절했어요'); renderAdmin(); }
+async function setLeader(id){
+  const u=store.profiles.find(u=>u.id===id);
+  if(!u) return;
+  if(!confirm(`${u.name} 님을 리더로 지정할까요?\n기존 리더는 일반 멤버로 변경됩니다.`)) return;
+  // 기존 리더 → 멤버로
+  const leaders=store.profiles.filter(p=>p.role==='leader');
+  for(const l of leaders){ await sb.from('profiles').update({role:'member'}).eq('id',l.id); }
+  // 새 리더 지정
+  await sb.from('profiles').update({role:'leader'}).eq('id',id);
+  showToast(`${u.name} 님이 리더가 됐어요`);
+  renderAdmin();
+}
 async function approveApp(appId){ await sb.from('applications').update({status:'approved'}).eq('id',appId); showToast('신청을 승인했어요'); renderAdmin(); renderJobs(); }
 async function denyApp(appId){ await sb.from('applications').update({status:'denied'}).eq('id',appId); showToast('신청을 거절했어요'); renderAdmin(); }
 
