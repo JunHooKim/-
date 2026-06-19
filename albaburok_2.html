@@ -892,7 +892,11 @@ async function renderAdmin(){
     : '<div class="empty-state">대기 중인 회원이 없어요</div>';
   const members=store.profiles.filter(u=>u.status==='approved');
   document.getElementById('adminMembers').innerHTML=members.length
-    ? members.map(u=>`<div class="admin-row"><div class="admin-info"><div class="admin-name">${u.name}${u.role==='leader'?' <span class="leader-badge">리더</span>':''}</div></div><div class="admin-actions">${u.role!=='leader'?`<button class="btn-ok" onclick="setLeader('${u.id}')">리더 지정</button>`:''}<button class="btn-del" onclick="requestDelete('${u.id}')">삭제</button></div></div>`).join('')
+    ? members.map(u=>`<div class="admin-row"><div class="admin-info"><div class="admin-name">${u.name}${u.role==='leader'?' <span class="leader-badge">리더</span>':''}</div></div><div class="admin-actions">${
+        u.role==='leader'
+          ? `<button class="btn-deny" onclick="removeLeader('${u.id}')">권한 제거</button>`
+          : `<button class="btn-ok" onclick="setLeader('${u.id}')">리더 지정</button>`
+      }<button class="btn-del" onclick="requestDelete('${u.id}')">삭제</button></div></div>`).join('')
     : '<div class="empty-state">승인된 멤버가 없어요</div>';
   const jobs=await fetchJobs();
   const allApps=[];
@@ -912,18 +916,25 @@ async function denyUser(id){ await sb.from('profiles').update({status:'denied'})
 async function setLeader(id){
   const u=store.profiles.find(u=>u.id===id);
   if(!u) return;
-  if(!confirm(`${u.name} 님을 리더로 지정할까요?\n기존 리더는 일반 멤버로 변경됩니다.`)) return;
-  const leaders=store.profiles.filter(p=>p.role==='leader');
-  for(const l of leaders){ await sb.from('profiles').update({role:'member'}).eq('id',l.id); }
+  if(!confirm(`${u.name} 님을 리더로 지정할까요?`)) return;
   await sb.from('profiles').update({role:'leader'}).eq('id',id);
-  // 현재 로그인 유저의 role이 바뀐 경우 세션 갱신
+  showToast(`${u.name} 님이 리더가 됐어요`);
+  const p = await loadMyProfile();
+  store.currentUser = p;
+  renderAdmin();
+}
+async function removeLeader(id){
+  const u=store.profiles.find(u=>u.id===id);
+  if(!u) return;
+  if(!confirm(`${u.name} 님의 리더 권한을 제거할까요?`)) return;
+  await sb.from('profiles').update({role:'member'}).eq('id',id);
+  showToast(`${u.name} 님의 리더 권한을 제거했어요`);
   const p = await loadMyProfile();
   store.currentUser = p;
   document.getElementById('topbarLeader').style.display=p.role==='leader'?'':'none';
   document.getElementById('navAdmin').style.display=p.role==='leader'?'':'none';
   document.getElementById('btnAddJob').style.display=p.role==='leader'?'':'none';
   document.getElementById('btnAddSlot').style.display=p.role==='leader'?'':'none';
-  showToast(`${u.name} 님이 리더가 됐어요`);
   renderAdmin();
 }
 async function approveApp(appId){ await sb.from('applications').update({status:'approved'}).eq('id',appId); showToast('신청을 승인했어요'); renderAdmin(); renderJobs(); }
