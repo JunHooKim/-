@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>알바부족</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --green: #1D9E75; --green-light: #E1F5EE; --green-dark: #0F6E56;
+  --orange: #D85A30; --orange-light: #FAECE7; --orange-dark: #993C1D;
+  --red-light: #FCEBEB; --red-dark: #A32D2D;
+  --blue-light: #E6F1FB; --blue-dark: #185FA5;
+  --bg: #F7F7F5; --surface: #FFFFFF;
+  --border: rgba(0,0,0,0.09); --border-md: rgba(0,0,0,0.15);
+  --text: #1a1a1a; --text-2: #666; --text-3: #999;
+  --radius: 12px; --radius-sm: 8px;
+}
+body { font-family: -apple-system,'Pretendard',sans-serif; background:var(--bg); color:var(--text); font-size:15px; min-height:100vh; }
+
+/* AUTH */
+.auth-wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:2rem 1rem; }
+.auth-box { background:var(--surface); border-radius:20px; border:0.5px solid var(--border); padding:2rem 2rem 2.5rem; width:100%; max-width:380px; }
+.auth-logo { text-align:center; margin-bottom:1.8rem; }
+.auth-logo-icon { width:52px; height:52px; background:var(--green); border-radius:14px; display:inline-flex; align-items:center; justify-content:center; margin-bottom:10px; }
+.auth-logo h1 { font-size:20px; font-weight:600; letter-spacing:-0.3px; }
+.auth-logo p { font-size:13px; color:var(--text-2); margin-top:3px; }
+.auth-tabs { display:flex; background:var(--bg); border-radius:var(--radius-sm); padding:3px; margin-bottom:1.4rem; gap:3px; }
+.auth-tab { flex:1; text-align:center; padding:7px; font-size:13px; border-radius:6px; cursor:pointer; color:var(--text-2); border:none; background:none; font-weight:500; }
+.auth-tab.active { background:var(--surface); color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+.field { margin-bottom:12px; }
+.field label { display:block; font-size:12px; color:var(--text-2); margin-bottom:5px; font-weight:500; }
+.field input, .field select { width:100%; padding:10px 12px; border:0.5px solid var(--border-md); border-radius:var(--radius-sm); font-size:14px; background:var(--bg); color:var(--text); outline:none; transition:border 0.15s; }
+.field input:focus { border-color:var(--green); background:#fff; }
+.btn-primary { width:100%; padding:11px; background:var(--green); color:#fff; border:none; border-radius:var(--radius-sm); font-size:14px; font-weight:600; cursor:pointer; margin-top:4px; }
+.btn-primary:hover { background:var(--green-dark); }
+.auth-notice { background:#FFF8E7; border:0.5px solid #F0C040; border-radius:var(--radius-sm); padding:10px 12px; font-size:12px; color:#7A5C00; margin-top:12px; }
+.auth-error { background:var(--red-light); border:0.5px solid #F09595; border-radius:var(--radius-sm); padding:10px 12px; font-size:12px; color:var(--red-dark); margin-top:10px; display:none; }
+.pending-box { text-align:center; padding:2rem 1rem; }
+.pending-box h2 { font-size:17px; margin-bottom:6px; margin-top:12px; }
+.pending-box p { font-size:13px; color:var(--text-2); line-height:1.6; }
+.pending-box button { margin-top:1.2rem; background:none; border:0.5px solid var(--border-md); padding:8px 20px; border-radius:var(--radius-sm); font-size:13px; cursor:pointer; color:var(--text-2); }
+
+/* APP */
+.app { display:none; flex-direction:column; min-height:100vh; }
+.app.visible { display:flex; }
+.topbar { background:var(--surface); border-bottom:0.5px solid var(--border); padding:0 1rem; height:52px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; }
+.topbar-logo { font-size:16px; font-weight:700; color:var(--green); display:flex; align-items:center; gap:7px; }
+.topbar-right { display:flex; align-items:center; gap:8px; }
+.user-badge { font-size:12px; color:var(--text-2); display:flex; align-items:center; gap:4px; }
+.leader-badge { background:var(--green-light); color:var(--green-dark); font-size:11px; padding:2px 7px; border-radius:99px; font-weight:600; }
+.logout-btn { background:none; border:0.5px solid var(--border-md); color:var(--text-2); cursor:pointer; display:flex; align-items:center; gap:5px; padding:5px 10px; border-radius:var(--radius-sm); font-size:12px; font-weight:500; }
+.logout-btn:hover { background:var(--bg); }
+.main-content { flex:1; padding:1rem; max-width:480px; margin:0 auto; width:100%; padding-bottom:80px; }
+
+/* BOTTOM NAV */
+.bottom-nav { background:var(--surface); border-top:0.5px solid var(--border); position:fixed; bottom:0; left:0; right:0; display:flex; z-index:100; }
+.nav-item { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:8px 4px 10px; cursor:pointer; border:none; background:none; color:var(--text-3); font-size:10px; gap:3px; }
+.nav-item svg { width:22px; height:22px; stroke:var(--text-3); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; transition:stroke 0.15s; }
+.nav-item.active { color:var(--green); }
+.nav-item.active svg { stroke:var(--green); }
+
+.page { display:none; }
+.page.active { display:block; }
+
+/* DASHBOARD */
+.section-label { font-size:12px; color:var(--text-3); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; margin-top:1.2rem; }
+.cards-row { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.metric-card { background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius); padding:14px 12px; }
+.mc-label { font-size:11px; color:var(--text-3); margin-bottom:5px; }
+.mc-value { font-size:17px; font-weight:600; }
+.mc-value.green { color:var(--green-dark); }
+.mc-value.orange { color:var(--orange-dark); }
+.feed-wrap { background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+.feed-row { display:flex; align-items:center; gap:10px; padding:11px 14px; border-bottom:0.5px solid var(--border); }
+.feed-row:last-child { border-bottom:none; }
+.feed-ico { width:30px; height:30px; border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.feed-ico.in { background:var(--green-light); }
+.feed-ico.out { background:var(--orange-light); }
+.feed-ico svg { width:14px; height:14px; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.feed-ico.in svg { stroke:var(--green-dark); }
+.feed-ico.out svg { stroke:var(--orange-dark); }
+.feed-text { flex:1; min-width:0; }
+.feed-desc { font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.feed-date { font-size:11px; color:var(--text-3); margin-top:1px; }
+.feed-amt { font-size:13px; font-weight:600; flex-shrink:0; }
+.feed-amt.in { color:var(--green-dark); }
+.feed-amt.out { color:var(--orange-dark); }
+.empty-state { padding:2rem; text-align:center; color:var(--text-3); font-size:13px; }
+
+/* TX 입력 */
+.tx-add-card { background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius); padding:14px; margin-bottom:12px; }
+.tx-add-card .field { margin-bottom:8px; }
+.tx-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.btn-tx { padding:9px; border:none; border-radius:var(--radius-sm); font-size:13px; font-weight:600; cursor:pointer; width:100%; }
+.btn-tx.in { background:var(--green-light); color:var(--green-dark); }
+.btn-tx.out { background:var(--orange-light); color:var(--orange-dark); }
+
+/* STATS */
+.stats-card { background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius); padding:18px 14px; }
+.donut-wrap { position:relative; width:180px; height:180px; margin:0 auto 16px; }
+.donut-svg { width:100%; height:100%; transform:rotate(-90deg); }
+.donut-center { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.donut-center-label { font-size:11px; color:var(--text-3); margin-bottom:3px; }
+.donut-center-value { font-size:16px; font-weight:700; color:var(--text); }
+.donut-legend { display:flex; flex-direction:column; gap:8px; }
+.legend-row { display:flex; align-items:center; gap:8px; font-size:13px; }
+.legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.legend-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.legend-pct { color:var(--text-3); font-size:12px; flex-shrink:0; }
+.legend-amt { font-weight:600; flex-shrink:0; }
+
+/* YONGDON */
+.page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.page-title { font-size:18px; font-weight:700; letter-spacing:-0.3px; }
+.btn-add { background:var(--green); color:#fff; border:none; border-radius:var(--radius-sm); padding:7px 14px; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:5px; }
+.btn-add svg { width:14px; height:14px; stroke:#fff; fill:none; stroke-width:2.5; stroke-linecap:round; }
+.settle-banner { background:var(--blue-light); border:0.5px solid #B5D4F4; border-radius:var(--radius); padding:14px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.settle-banner-text { font-size:13px; color:var(--blue-dark); }
+.settle-banner-text strong { font-weight:600; }
+.btn-settle { background:var(--blue-dark); color:#fff; border:none; border-radius:var(--radius-sm); padding:7px 14px; font-size:13px; font-weight:600; cursor:pointer; flex-shrink:0; }
+.job-card { background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius); padding:14px; margin-bottom:10px; }
+.job-card-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:8px; }
+.job-title { font-size:15px; font-weight:600; }
+.job-meta { font-size:12px; color:var(--text-2); margin-top:3px; line-height:1.5; }
+.job-tag { background:var(--green-light); color:var(--green-dark); font-size:11px; font-weight:600; padding:2px 8px; border-radius:99px; flex-shrink:0; }
+.job-pay { font-size:12px; color:var(--text-2); margin-top:8px; padding-top:8px; border-top:0.5px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.job-pay-hi { font-size:13px; font-weight:700; color:var(--green-dark); }
+.btn-apply { background:var(--green); color:#fff; border:none; border-radius:var(--radius-sm); padding:8px; font-size:13px; font-weight:600; cursor:pointer; margin-top:10px; width:100%; }
+.applied-tag { text-align:center; font-size:12px; color:var(--text-3); margin-top:10px; display:flex; align-items:center; justify-content:center; gap:4px; }
+.approved-tag { text-align:center; font-size:12px; color:var(--green-dark); font-weight:600; margin-top:10px; display:flex; align-items:center; justify-content:center; gap:4px; }
+
+/* 알바배정 */
+.slot-card { background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius); padding:14px; margin-bottom:10px; }
+.slot-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:10px; }
+.slot-title { font-size:15px; font-weight:600; }
+.slot-meta { font-size:12px; color:var(--text-2); margin-top:3px; line-height:1.5; }
+.slot-actions { display:flex; gap:6px; flex-shrink:0; }
+.btn-edit { background:var(--blue-light); color:var(--blue-dark); border:none; border-radius:6px; padding:5px 10px; font-size:12px; font-weight:600; cursor:pointer; }
+.slot-members { display:flex; flex-wrap:wrap; gap:6px; padding-top:10px; border-top:0.5px solid var(--border); }
+.member-chip { background:var(--green-light); color:var(--green-dark); font-size:12px; font-weight:600; padding:4px 10px; border-radius:99px; }
+.slot-empty-members { font-size:12px; color:var(--text-3); padding-top:10px; border-top:0.5px solid var(--border); }
+.assign-row { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:0.5px solid var(--border); cursor:pointer; }
+.assign-row:last-child { border-bottom:none; }
+.assign-row input[type="checkbox"] { width:18px; height:18px; accent-color:var(--green); cursor:pointer; flex-shrink:0; }
+.assign-row span { font-size:14px; }
+
+/* ADMIN */
+.admin-section { margin-bottom:1.2rem; }
+.admin-h { font-size:14px; font-weight:600; color:var(--text-2); margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+.admin-h svg { width:15px; height:15px; stroke:var(--text-2); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.admin-card { background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+.admin-row { display:flex; align-items:center; gap:10px; padding:11px 14px; border-bottom:0.5px solid var(--border); }
+.admin-row:last-child { border-bottom:none; }
+.admin-info { flex:1; min-width:0; }
+.admin-name { font-size:14px; font-weight:500; }
+.admin-sub { font-size:12px; color:var(--text-3); margin-top:1px; }
+.admin-actions { display:flex; gap:6px; flex-shrink:0; }
+.btn-ok { background:var(--green-light); color:var(--green-dark); border:none; border-radius:6px; padding:5px 12px; font-size:12px; font-weight:600; cursor:pointer; }
+.btn-deny { background:var(--orange-light); color:var(--orange-dark); border:none; border-radius:6px; padding:5px 12px; font-size:12px; font-weight:600; cursor:pointer; }
+.btn-del { background:var(--red-light); color:var(--red-dark); border:none; border-radius:6px; padding:5px 12px; font-size:12px; font-weight:600; cursor:pointer; }
+.chip { font-size:11px; padding:3px 8px; border-radius:99px; font-weight:600; }
+.chip-approved { background:var(--green-light); color:var(--green-dark); }
+.chip-denied { background:var(--orange-light); color:var(--orange-dark); }
+
+/* MODAL */
+.modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:200; align-items:center; justify-content:center; padding:1rem; }
+.modal-bg.open { display:flex; }
+.modal { background:var(--surface); border-radius:18px; padding:1.5rem; width:100%; max-width:360px; max-height:90vh; overflow-y:auto; }
+.modal h3 { font-size:16px; font-weight:700; margin-bottom:1rem; }
+.modal .field { margin-bottom:10px; }
+.modal-actions { display:flex; gap:8px; margin-top:1rem; }
+.btn-cancel { flex:1; padding:10px; background:var(--bg); border:none; border-radius:var(--radius-sm); font-size:14px; cursor:pointer; color:var(--text-2); font-weight:500; }
+.btn-confirm { flex:2; padding:10px; background:var(--green); color:#fff; border:none; border-radius:var(--radius-sm); font-size:14px; font-weight:600; cursor:pointer; }
+.btn-confirm.danger { background:#E24B4A; }
+
+/* 정산 테이블 */
+.settle-table { width:100%; border-collapse:collapse; font-size:13px; margin:10px 0; }
+.settle-table th { text-align:left; color:var(--text-3); font-weight:500; padding:6px 4px; border-bottom:0.5px solid var(--border); }
+.settle-table td { padding:8px 4px; border-bottom:0.5px solid var(--border); }
+.settle-table tr:last-child td { border-bottom:none; }
+.settle-total { background:var(--bg); border-radius:var(--radius-sm); padding:10px 12px; font-size:13px; font-weight:600; display:flex; justify-content:space-between; margin-top:8px; }
+
+/* TOAST */
+.toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(20px); background:#1a1a1a; color:#fff; padding:10px 18px; border-radius:99px; font-size:13px; opacity:0; pointer-events:none; transition:all 0.25s; z-index:300; white-space:nowrap; }
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div class="auth-wrap" id="authWrap">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+      </div>
+      <h1>알바부족</h1>
+      <p>함께 일하고, 함께 모으고, 함께 떠나요</p>
+    </div>
+    <div id="authTabs" class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login')">로그인</button>
+      <button class="auth-tab" onclick="switchTab('signup')">회원가입</button>
+    </div>
+    <div id="loginForm">
+      <div class="field"><label>이메일</label><input type="email" id="loginId" placeholder="example@gmail.com"></div>
+      <div class="field"><label>비밀번호</label><input type="password" id="loginPw" placeholder="비밀번호 입력"></div>
+      <div class="auth-error" id="loginError"></div>
+      <button class="btn-primary" onclick="doLogin()" style="margin-top:12px;">로그인</button>
+    </div>
+    <div id="signupForm" style="display:none;">
+      <div class="field"><label>이름</label><input type="text" id="regName" placeholder="본명 입력"></div>
+      <div class="field"><label>이메일</label><input type="email" id="regId" placeholder="example@gmail.com"></div>
+      <div class="field"><label>비밀번호</label><input type="password" id="regPw" placeholder="6자 이상"></div>
+      <div class="auth-error" id="signupError"></div>
+      <button class="btn-primary" onclick="doSignup()" style="margin-top:12px;">가입 신청</button>
+      <div class="auth-notice">⚡ 가입 신청 후 리더의 승인을 받아야 이용할 수 있어요.</div>
+    </div>
+    <div id="pendingForm" style="display:none;" class="pending-box">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#F0C040" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+      <h2>승인 대기 중</h2>
+      <p>리더가 가입 신청을 확인 중이에요.<br>승인되면 바로 이용할 수 있어요!</p>
+      <button onclick="doLogout()">← 돌아가기</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="appWrap">
+  <div class="topbar">
+    <div class="topbar-logo">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+      알바부족
+    </div>
+    <div class="topbar-right">
+      <div class="user-badge">
+        <span id="topbarName"></span>
+        <span id="topbarLeader" class="leader-badge" style="display:none;">리더</span>
+      </div>
+      <button class="logout-btn" onclick="doLogout()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        로그아웃
+      </button>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <!-- 홈 -->
+    <div class="page active" id="pageDash">
+      <div class="section-label" style="margin-top:0;">이번 달</div>
+      <div class="cards-row">
+        <div class="metric-card"><div class="mc-label">수입</div><div class="mc-value green" id="dashIncome">0원</div></div>
+        <div class="metric-card"><div class="mc-label">지출</div><div class="mc-value orange" id="dashExpense">0원</div></div>
+        <div class="metric-card"><div class="mc-label">잔액</div><div class="mc-value" id="dashBalance">0원</div></div>
+      </div>
+      <div class="section-label">내역 추가</div>
+      <div class="tx-add-card">
+        <div class="tx-row">
+          <div class="field" style="margin:0;"><label>금액 (원)</label><input type="number" id="txAmount" placeholder="예) 50000"></div>
+          <div class="field" style="margin:0;"><label>날짜</label><input type="date" id="txDate"></div>
+        </div>
+        <div class="field" style="margin-top:8px;margin-bottom:10px;"><label>내용</label><input type="text" id="txDesc" placeholder="예) 위한나 5월달 두유 비용"></div>
+        <div class="tx-row">
+          <button class="btn-tx in" onclick="addTx('in')">+ 수입 추가</button>
+          <button class="btn-tx out" onclick="addTx('out')">− 지출 추가</button>
+        </div>
+      </div>
+      <div class="section-label">최근 내역</div>
+      <div class="feed-wrap" id="dashFeed"><div class="empty-state">내역이 없어요</div></div>
+      <div class="section-label">연간 수입 통계</div>
+      <div class="stats-card">
+        <div class="donut-wrap">
+          <svg id="donutSvg" viewBox="0 0 200 200" class="donut-svg"></svg>
+          <div class="donut-center">
+            <div class="donut-center-label">연간 총수입</div>
+            <div class="donut-center-value" id="donutTotal">0원</div>
+          </div>
+        </div>
+        <div class="donut-legend" id="donutLegend"></div>
+      </div>
+    </div>
+
+    <!-- 용돈부족 -->
+    <div class="page" id="pageYd">
+      <div class="page-header">
+        <div class="page-title">용돈부족</div>
+        <button class="btn-add" id="btnAddJob" style="display:none;" onclick="openModal('modalAddJob')">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          알바 올리기
+        </button>
+      </div>
+      <div id="settleBanner" style="display:none;">
+        <div class="settle-banner">
+          <div class="settle-banner-text">이번 달 누적 기록이 있어요.<br><strong>정산</strong>하면 공금에서 지출 처리돼요.</div>
+          <button class="btn-settle" onclick="openSettle()">정산하기</button>
+        </div>
+      </div>
+      <div id="jobList"></div>
+    </div>
+
+    <!-- 알바배정 -->
+    <div class="page" id="pageAssign">
+      <div class="page-header">
+        <div class="page-title">알바배정</div>
+        <button class="btn-add" id="btnAddSlot" style="display:none;" onclick="openModal('modalAddSlot')">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          알바 추가
+        </button>
+      </div>
+      <div id="slotList"></div>
+    </div>
+
+    <!-- 관리 -->
+    <div class="page" id="pageAdmin">
+      <div class="page-header"><div class="page-title">관리</div></div>
+      <div class="admin-section">
+        <div class="admin-h">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          가입 승인 대기
+        </div>
+        <div class="admin-card" id="adminPending"><div class="empty-state">대기 중인 회원이 없어요</div></div>
+      </div>
+      <div class="admin-section">
+        <div class="admin-h">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          멤버 목록
+        </div>
+        <div class="admin-card" id="adminMembers"><div class="empty-state">멤버가 없어요</div></div>
+      </div>
+      <div class="admin-section">
+        <div class="admin-h">
+          <svg viewBox="0 0 24 24"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4" cy="6" r="1.5" fill="#666" stroke="none"/><circle cx="4" cy="12" r="1.5" fill="#666" stroke="none"/><circle cx="4" cy="18" r="1.5" fill="#666" stroke="none"/></svg>
+          용돈부족 신청 승인
+        </div>
+        <div class="admin-card" id="adminApps"><div class="empty-state">신청 내역이 없어요</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <button class="nav-item active" onclick="gotoPage('dash')">
+      <svg viewBox="0 0 24 24"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>홈
+    </button>
+    <button class="nav-item" onclick="gotoPage('yd')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M14.5 9a2.5 2.5 0 0 0-5 0c0 3 5 3 5 6a2.5 2.5 0 0 1-5 0"/><path d="M12 6.5v1M12 16.5v1"/></svg>용돈부족
+    </button>
+    <button class="nav-item" onclick="gotoPage('assign')">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>알바배정
+    </button>
+    <button class="nav-item" id="navAdmin" style="display:none;" onclick="gotoPage('admin')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>관리
+    </button>
+  </div>
+</div>
+
+<!-- 모달들 -->
+<div class="modal-bg" id="modalAddJob">
+  <div class="modal">
+    <h3>알바 올리기</h3>
+    <div class="field"><label>알바 이름</label><input type="text" id="jobName" placeholder="예) 두유 제조"></div>
+    <div class="field"><label>장소 / 내용</label><input type="text" id="jobPlace" placeholder="예) 한나와 함께 만듭니다."></div>
+    <div class="field"><label>날짜</label><input type="date" id="jobDate"></div>
+    <div class="field"><label>시간 수</label><input type="number" id="jobHours" placeholder="예) 4" min="1" max="24"></div>
+    <div class="field"><label>시간당 수령액 (원)</label><input type="number" id="jobPayPerHour" placeholder="예) 8000" value="8000"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modalAddJob')">취소</button>
+      <button class="btn-confirm" onclick="submitJob()">등록</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalAddSlot">
+  <div class="modal">
+    <h3>알바 추가</h3>
+    <div class="field"><label>알바 이름</label><input type="text" id="slotName" placeholder="예) 두유 제조"></div>
+    <div class="field"><label>요일 / 시간</label><input type="text" id="slotSchedule" placeholder="예) 매주 월·목 오후 2시"></div>
+    <div class="field"><label>장소 / 내용</label><input type="text" id="slotPlace" placeholder="예) 한나와 함께 만듭니다."></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modalAddSlot')">취소</button>
+      <button class="btn-confirm" onclick="submitSlot()">등록</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalAssignMembers">
+  <div class="modal">
+    <h3 id="assignModalTitle">멤버 배정</h3>
+    <p style="font-size:13px;color:var(--text-2);margin-bottom:10px;">이 알바에 고정으로 배정할 멤버를 선택하세요.</p>
+    <div id="assignMemberList" style="max-height:300px;overflow-y:auto;border:0.5px solid var(--border);border-radius:var(--radius-sm);"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modalAssignMembers')">취소</button>
+      <button class="btn-confirm" onclick="confirmAssign()">배정 저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalSettle">
+  <div class="modal">
+    <h3>이번 달 정산</h3>
+    <p style="font-size:13px;color:var(--text-2);margin-bottom:12px;">승인된 알바 기록을 기준으로 지급액을 계산했어요. 확정하면 공금에서 지출 처리돼요.</p>
+    <div id="settleTableWrap"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modalSettle')">취소</button>
+      <button class="btn-confirm danger" onclick="confirmSettle()">정산 확정</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalDelConfirm">
+  <div class="modal">
+    <h3>멤버 삭제</h3>
+    <p style="font-size:14px;color:var(--text-2);margin-bottom:4px;" id="delConfirmText"></p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modalDelConfirm')">취소</button>
+      <button class="btn-confirm danger" onclick="confirmDelete()">삭제</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalDelSlotConfirm">
+  <div class="modal">
+    <h3>알바 삭제</h3>
+    <p style="font-size:14px;color:var(--text-2);margin-bottom:4px;" id="delSlotConfirmText"></p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modalDelSlotConfirm')">취소</button>
+      <button class="btn-confirm danger" onclick="confirmDeleteSlot()">삭제</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://qmgnjpmejaxqkinwuphx.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtZ25qcG1lamF4cWtpbnd1cGh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3Mzk1NTQsImV4cCI6MjA5NzMxNTU1NH0.-5Y34GqTqVpimRGOCX-c3MKZCCvqowStt8C_dJPXUEw';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const store = {
+  profile: null,
+  profiles: [],
+  jobs: [],
+  slots: [],
+  transactions: [],
+  currentUser: null,
+  pendingDeleteId: null,
+  pendingDeleteSlotId: null,
+  assigningSlotId: null
+};
+
+// ── AUTH ──────────────────────────────────────────
+function switchTab(tab){
+  document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('active',(tab==='login'&&i===0)||(tab==='signup'&&i===1)));
+  document.getElementById('loginForm').style.display=tab==='login'?'':'none';
+  document.getElementById('signupForm').style.display=tab==='signup'?'':'none';
+  document.getElementById('pendingForm').style.display='none';
+  document.getElementById('authTabs').style.display='';
+  clearErr('loginError'); clearErr('signupError');
+}
+function showErr(id,msg){ const e=document.getElementById(id); e.textContent=msg; e.style.display='block'; }
+function clearErr(id){ const e=document.getElementById(id); if(e){e.textContent='';e.style.display='none';} }
+
+async function loadMyProfile(){
+  const { data:{ user } } = await sb.auth.getUser();
+  if(!user) return null;
+  const { data, error } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  if(error){ console.error(error); return null; }
+  store.profile = data;
+  return data;
+}
+
+async function doLogin(){
+  clearErr('loginError');
+  const email = document.getElementById('loginId').value.trim();
+  const pw = document.getElementById('loginPw').value.trim();
+  if(!email||!pw){ showErr('loginError','이메일과 비밀번호를 입력해주세요.'); return; }
+  const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+  if(error){
+    if(error.message.includes('Email not confirmed')) showErr('loginError','이메일 인증을 먼저 완료해주세요.');
+    else showErr('loginError','이메일 또는 비밀번호가 맞지 않아요.');
+    return;
+  }
+  const p = await loadMyProfile();
+  if(!p){ showErr('loginError','프로필을 불러오지 못했어요.'); return; }
+  if(p.status==='pending'){
+    store.currentUser=p;
+    document.getElementById('authTabs').style.display='none';
+    document.getElementById('loginForm').style.display='none';
+    document.getElementById('pendingForm').style.display='';
+    return;
+  }
+  if(p.status==='denied'){ showErr('loginError','가입이 거절되었어요. 리더에게 문의하세요.'); await sb.auth.signOut(); return; }
+  store.currentUser=p;
+  enterApp();
+}
+
+async function doSignup(){
+  clearErr('signupError');
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regId').value.trim();
+  const pw = document.getElementById('regPw').value.trim();
+  if(!name||!email||!pw){ showErr('signupError','모든 항목을 입력해주세요.'); return; }
+  if(pw.length<6){ showErr('signupError','비밀번호는 6자 이상이에요.'); return; }
+  const { error } = await sb.auth.signUp({ email, password: pw, options:{ data:{ name } } });
+  if(error){
+    if(error.message.includes('already registered')) showErr('signupError','이미 가입된 이메일이에요.');
+    else showErr('signupError','가입 중 오류: '+error.message);
+    return;
+  }
+  document.getElementById('authTabs').style.display='none';
+  document.getElementById('signupForm').style.display='none';
+  document.getElementById('pendingForm').style.display='';
+}
+
+async function doLogout(){
+  await sb.auth.signOut();
+  store.profile=null; store.currentUser=null;
+  document.getElementById('appWrap').classList.remove('visible');
+  document.getElementById('authWrap').style.display='flex';
+  document.getElementById('loginId').value='';
+  document.getElementById('loginPw').value='';
+  switchTab('login');
+}
+
+function enterApp(){
+  document.getElementById('authWrap').style.display='none';
+  document.getElementById('appWrap').classList.add('visible');
+  const u=store.currentUser;
+  document.getElementById('topbarName').textContent=u.name;
+  document.getElementById('topbarLeader').style.display=u.role==='leader'?'':'none';
+  document.getElementById('navAdmin').style.display=u.role==='leader'?'':'none';
+  document.getElementById('btnAddJob').style.display=u.role==='leader'?'':'none';
+  document.getElementById('btnAddSlot').style.display=u.role==='leader'?'':'none';
+  gotoPage('dash');
+}
+
+async function initSession(){
+  const { data:{ session } } = await sb.auth.getSession();
+  if(!session) return;
+  const p = await loadMyProfile();
+  if(!p) return;
+  store.currentUser=p;
+  if(p.status==='approved') enterApp();
+  else if(p.status==='pending'){
+    document.getElementById('authTabs').style.display='none';
+    document.getElementById('loginForm').style.display='none';
+    document.getElementById('pendingForm').style.display='';
+  }
+}
+
+// ── NAV ──────────────────────────────────────────
+function gotoPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const map={dash:[0,'pageDash'],yd:[1,'pageYd'],assign:[2,'pageAssign'],admin:[3,'pageAdmin']};
+  const [idx,pid]=map[name];
+  document.getElementById(pid).classList.add('active');
+  document.querySelectorAll('.nav-item')[idx]?.classList.add('active');
+  if(name==='dash') renderDash();
+  if(name==='yd') renderJobs();
+  if(name==='assign') renderSlots();
+  if(name==='admin') renderAdmin();
+}
+
+// ── DASHBOARD ────────────────────────────────────
+async function addTx(type){
+  const amt=parseInt(document.getElementById('txAmount').value);
+  const desc=document.getElementById('txDesc').value.trim();
+  const date=document.getElementById('txDate').value;
+  if(!amt||!desc||!date){ showToast('금액, 날짜, 내용을 모두 입력해주세요'); return; }
+  const { error } = await sb.from('transactions').insert({ type, description:desc, amount:amt, date, created_by:store.currentUser.id });
+  if(error){ showToast('저장 중 오류가 발생했어요'); console.error(error); return; }
+  ['txAmount','txDesc','txDate'].forEach(id=>document.getElementById(id).value='');
+  showToast(type==='in'?'수입이 추가됐어요':'지출이 추가됐어요');
+  await renderDash();
+}
+
+async function renderDash(){
+  const { data:txs } = await sb.from('transactions').select('*').order('date',{ascending:false}).order('created_at',{ascending:false});
+  store.transactions = txs||[];
+  const now=new Date(); const mo=now.getMonth(); const yr=now.getFullYear();
+  let inc=0,exp=0;
+  store.transactions.forEach(t=>{
+    const d=new Date(t.date);
+    if(d.getMonth()===mo&&d.getFullYear()===yr){
+      if(t.type==='in') inc+=t.amount; else exp+=t.amount;
+    }
+  });
+  const allIn=store.transactions.filter(t=>t.type==='in').reduce((s,t)=>s+t.amount,0);
+  const allOut=store.transactions.filter(t=>t.type==='out').reduce((s,t)=>s+t.amount,0);
+  document.getElementById('dashIncome').textContent=fmt(inc);
+  document.getElementById('dashExpense').textContent=fmt(exp);
+  document.getElementById('dashBalance').textContent=fmt(allIn-allOut);
+  const feed=document.getElementById('dashFeed');
+  if(!store.transactions.length){
+    feed.innerHTML='<div class="empty-state">내역이 없어요</div>';
+  } else {
+    const iIn=`<svg viewBox="0 0 24 24"><line x1="17" y1="7" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>`;
+    const iOut=`<svg viewBox="0 0 24 24"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>`;
+    feed.innerHTML=store.transactions.slice(0,10).map(t=>`
+      <div class="feed-row">
+        <div class="feed-ico ${t.type}">${t.type==='in'?iIn:iOut}</div>
+        <div class="feed-text"><div class="feed-desc">${t.description}</div><div class="feed-date">${t.date}</div></div>
+        <div class="feed-amt ${t.type}">${t.type==='in'?'+':'-'}${fmt(t.amount)}</div>
+      </div>`).join('');
+  }
+  renderDonutStats();
+}
+
+// ── 도넛 차트 ─────────────────────────────────────
+const DONUT_COLORS=['#1D9E75','#D85A30','#185FA5','#C9A227','#8B5CF6','#E24B86','#2BA6A4','#B45309','#6B7280','#DB2777'];
+function renderDonutStats(){
+  const yr=new Date().getFullYear();
+  const incomeTx=store.transactions.filter(t=>t.type==='in'&&new Date(t.date).getFullYear()===yr);
+  const totals={};
+  incomeTx.forEach(t=>{ totals[t.description]=(totals[t.description]||0)+t.amount; });
+  const entries=Object.entries(totals).sort((a,b)=>b[1]-a[1]);
+  const grandTotal=entries.reduce((s,[,v])=>s+v,0);
+  document.getElementById('donutTotal').textContent=fmt(grandTotal);
+  const legend=document.getElementById('donutLegend');
+  const svg=document.getElementById('donutSvg');
+  if(!entries.length||grandTotal===0){
+    svg.innerHTML=`<circle cx="100" cy="100" r="80" fill="none" stroke="var(--border)" stroke-width="28"/>`;
+    legend.innerHTML='<div class="empty-state" style="padding:0.5rem 0;">올해 수입 내역이 없어요</div>';
+    return;
+  }
+  const R=80,CX=100,CY=100,CIRC=2*Math.PI*R;
+  let acc=0;
+  const segHtml=entries.map(([name,val],i)=>{
+    const frac=val/grandTotal,dash=frac*CIRC,offset=acc*CIRC;
+    acc+=frac;
+    const color=DONUT_COLORS[i%DONUT_COLORS.length];
+    return `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${color}" stroke-width="28" stroke-dasharray="0 ${CIRC}" stroke-dashoffset="${-offset}" data-final="${dash} ${CIRC-dash}" stroke-linecap="butt"/>`;
+  }).join('');
+  svg.innerHTML=`<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="var(--bg)" stroke-width="28"/>${segHtml}`;
+  legend.innerHTML=entries.map(([name,val],i)=>`
+    <div class="legend-row">
+      <span class="legend-dot" style="background:${DONUT_COLORS[i%DONUT_COLORS.length]}"></span>
+      <span class="legend-name">${name}</span>
+      <span class="legend-pct">${Math.round(val/grandTotal*100)}%</span>
+      <span class="legend-amt">${fmt(val)}</span>
+    </div>`).join('');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    svg.querySelectorAll('circle[data-final]').forEach(c=>{
+      c.style.transition='stroke-dasharray 0.9s cubic-bezier(0.4,0,0.2,1)';
+      c.setAttribute('stroke-dasharray',c.getAttribute('data-final'));
+    });
+  }));
+}
+
+// ── JOBS (용돈부족) ────────────────────────────────
+async function fetchJobs(){
+  const { data:jobs } = await sb.from('jobs').select('*').order('date',{ascending:false});
+  const { data:apps } = await sb.from('applications').select('*, profiles(name)');
+  return (jobs||[]).map(j=>({
+    ...j,
+    applications: (apps||[]).filter(a=>a.job_id===j.id).map(a=>({
+      id:a.id, userId:a.user_id, userName:a.profiles?.name||'(알수없음)', status:a.status, settled:a.settled
+    }))
+  }));
+}
+
+function getApprovedSummary(jobs){
+  const summary={};
+  jobs.forEach(job=>{
+    job.applications.forEach(app=>{
+      if(app.status==='approved'&&!app.settled){
+        if(!summary[app.userId]) summary[app.userId]={name:app.userName,hours:0,total:0};
+        summary[app.userId].hours+=Number(job.hours);
+        summary[app.userId].total+=job.pay_per_hour*job.hours;
+      }
+    });
+  });
+  return summary;
+}
+
+async function renderJobs(){
+  const jobs = await fetchJobs();
+  store.jobs=jobs;
+  const list=document.getElementById('jobList');
+  const banner=document.getElementById('settleBanner');
+  const summary=getApprovedSummary(jobs);
+  const isLeader=store.currentUser?.role==='leader';
+  banner.style.display=(isLeader&&Object.keys(summary).length>0)?'':'none';
+  if(!jobs.length){
+    list.innerHTML='<div class="empty-state" style="background:var(--surface);border-radius:var(--radius);border:0.5px solid var(--border);padding:2rem;">등록된 알바가 없어요</div>';
+    return;
+  }
+  const iClock=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>`;
+  const iCheck=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+  list.innerHTML=jobs.map(job=>{
+    const myApp=job.applications.find(a=>a.userId===store.currentUser.id);
+    let action='';
+    if(myApp){
+      if(myApp.settled) action=`<div class="applied-tag">정산 완료</div>`;
+      else if(myApp.status==='approved') action=`<div class="approved-tag">${iCheck} 승인됨 · ${fmt(job.pay_per_hour*job.hours)} 정산 예정</div>`;
+      else if(myApp.status==='denied') action=`<div class="applied-tag">신청이 거절됐어요</div>`;
+      else action=`<div class="applied-tag">${iClock} 신청 완료 · 승인 대기 중</div>`;
+    } else {
+      action=`<button class="btn-apply" onclick="applyJob('${job.id}')">신청하기</button>`;
+    }
+    return `<div class="job-card">
+      <div class="job-card-top">
+        <div><div class="job-title">${job.title}</div><div class="job-meta">${job.place}<br>${job.date} · ${job.hours}시간</div></div>
+        <span class="job-tag">모집 중</span>
+      </div>
+      <div class="job-pay">
+        <span>시간당 수령 <span class="job-pay-hi">${fmt(job.pay_per_hour)}</span></span>
+        <span style="color:var(--text-3);font-size:11px;">총 ${fmt(job.pay_per_hour*job.hours)}</span>
+      </div>
+      ${action}
+    </div>`;
+  }).join('');
+}
+
+async function applyJob(jobId){
+  const { error } = await sb.from('applications').insert({ job_id:jobId, user_id:store.currentUser.id, status:'pending' });
+  if(error){ showToast(error.message.includes('duplicate')?'이미 신청한 알바예요':'신청 중 오류가 발생했어요'); return; }
+  showToast('신청 완료! 리더 승인을 기다려요 🙌');
+  renderJobs();
+}
+
+function openSettle(){
+  const summary=getApprovedSummary(store.jobs);
+  const rows=Object.entries(summary).map(([,s])=>`<tr><td>${s.name}</td><td style="text-align:center">${s.hours}시간</td><td style="text-align:right;font-weight:600;color:var(--orange-dark)">−${fmt(s.total)}</td></tr>`).join('');
+  const grandTotal=Object.values(summary).reduce((s,v)=>s+v.total,0);
+  document.getElementById('settleTableWrap').innerHTML=`
+    <table class="settle-table">
+      <thead><tr><th>이름</th><th style="text-align:center">근무 시간</th><th style="text-align:right">지급액</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="settle-total"><span>공금 총 지출</span><span style="color:var(--orange-dark)">−${fmt(grandTotal)}</span></div>`;
+  openModal('modalSettle');
+}
+
+async function confirmSettle(){
+  const summary=getApprovedSummary(store.jobs);
+  const grandTotal=Object.values(summary).reduce((s,v)=>s+v.total,0);
+  const today=new Date().toISOString().slice(0,10);
+  const names=Object.values(summary).map(s=>s.name).join(', ');
+  await sb.from('transactions').insert({ type:'out', description:`용돈부족 정산 (${names})`, amount:grandTotal, date:today, created_by:store.currentUser.id });
+  const settledIds=[];
+  store.jobs.forEach(job=>job.applications.forEach(app=>{ if(app.status==='approved'&&!app.settled) settledIds.push(app.id); }));
+  if(settledIds.length) await sb.from('applications').update({ settled:true }).in('id', settledIds);
+  closeModal('modalSettle');
+  showToast('정산 완료!');
+  renderJobs(); renderDash();
+}
+
+async function submitJob(){
+  const title=document.getElementById('jobName').value.trim();
+  const place=document.getElementById('jobPlace').value.trim();
+  const date=document.getElementById('jobDate').value;
+  const hours=parseFloat(document.getElementById('jobHours').value);
+  const pay=parseInt(document.getElementById('jobPayPerHour').value);
+  if(!title||!place||!date||!hours||isNaN(pay)){ showToast('모든 항목을 입력해주세요'); return; }
+  const { error } = await sb.from('jobs').insert({ title, place, date, hours, pay_per_hour:pay, posted_by:store.currentUser.id });
+  if(error){ showToast('등록 중 오류가 발생했어요'); console.error(error); return; }
+  closeModal('modalAddJob');
+  ['jobName','jobPlace','jobDate','jobHours'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('jobPayPerHour').value='8000';
+  showToast('알바가 등록됐어요!');
+  renderJobs();
+}
+
+// ── 알바배정 ──────────────────────────────────────
+async function renderSlots(){
+  const { data:slots } = await sb.from('slots').select('*').order('created_at',{ascending:false});
+  const { data:sm } = await sb.from('slot_members').select('*, profiles(name)');
+  store.slots=(slots||[]).map(s=>({
+    ...s,
+    memberIds:(sm||[]).filter(m=>m.slot_id===s.id).map(m=>m.user_id),
+    memberNames:(sm||[]).filter(m=>m.slot_id===s.id).map(m=>m.profiles?.name||'?')
+  }));
+  const list=document.getElementById('slotList');
+  const isLeader=store.currentUser?.role==='leader';
+  if(!store.slots.length){
+    list.innerHTML='<div class="empty-state" style="background:var(--surface);border-radius:var(--radius);border:0.5px solid var(--border);padding:2rem;">등록된 알바가 없어요</div>';
+    return;
+  }
+  list.innerHTML=store.slots.map(slot=>{
+    const membersHtml=slot.memberNames.length
+      ? `<div class="slot-members">${slot.memberNames.map(n=>`<span class="member-chip">${n}</span>`).join('')}</div>`
+      : `<div class="slot-empty-members">아직 배정된 멤버가 없어요</div>`;
+    const actions=isLeader
+      ? `<div class="slot-actions"><button class="btn-edit" onclick="openAssign('${slot.id}')">배정</button><button class="btn-del" onclick="requestDeleteSlot('${slot.id}')">삭제</button></div>`
+      : '';
+    return `<div class="slot-card">
+      <div class="slot-top">
+        <div><div class="slot-title">${slot.title}</div><div class="slot-meta">${slot.schedule}${slot.place?' · '+slot.place:''}</div></div>
+        ${actions}
+      </div>
+      ${membersHtml}
+    </div>`;
+  }).join('');
+}
+
+async function submitSlot(){
+  const title=document.getElementById('slotName').value.trim();
+  const schedule=document.getElementById('slotSchedule').value.trim();
+  const place=document.getElementById('slotPlace').value.trim();
+  if(!title||!schedule){ showToast('알바 이름과 요일/시간을 입력해주세요'); return; }
+  const { error } = await sb.from('slots').insert({ title, schedule, place, created_by:store.currentUser.id });
+  if(error){ showToast('등록 중 오류가 발생했어요'); console.error(error); return; }
+  closeModal('modalAddSlot');
+  ['slotName','slotSchedule','slotPlace'].forEach(id=>document.getElementById(id).value='');
+  showToast('알바가 추가됐어요');
+  renderSlots();
+}
+
+async function openAssign(slotId){
+  const slot=store.slots.find(s=>s.id===slotId);
+  if(!slot) return;
+  store.assigningSlotId=slotId;
+  document.getElementById('assignModalTitle').textContent=`${slot.title} 멤버 배정`;
+  const { data:members } = await sb.from('profiles').select('*').eq('status','approved').order('name');
+  document.getElementById('assignMemberList').innerHTML=(members||[]).map(m=>`
+    <label class="assign-row">
+      <input type="checkbox" value="${m.id}" ${slot.memberIds.includes(m.id)?'checked':''}>
+      <span>${m.name}${m.role==='leader'?' (리더)':''}</span>
+    </label>`).join('');
+  openModal('modalAssignMembers');
+}
+
+async function confirmAssign(){
+  const slot=store.slots.find(s=>s.id===store.assigningSlotId);
+  if(!slot) return;
+  const checked=[...document.querySelectorAll('#assignMemberList input[type=checkbox]:checked')].map(c=>c.value);
+  await sb.from('slot_members').delete().eq('slot_id', slot.id);
+  if(checked.length) await sb.from('slot_members').insert(checked.map(uid=>({ slot_id:slot.id, user_id:uid })));
+  closeModal('modalAssignMembers');
+  showToast('배정을 저장했어요');
+  renderSlots();
+}
+
+function requestDeleteSlot(slotId){
+  const slot=store.slots.find(s=>s.id===slotId);
+  if(!slot) return;
+  store.pendingDeleteSlotId=slotId;
+  document.getElementById('delSlotConfirmText').textContent=`"${slot.title}" 알바를 삭제할까요?`;
+  openModal('modalDelSlotConfirm');
+}
+
+async function confirmDeleteSlot(){
+  await sb.from('slots').delete().eq('id', store.pendingDeleteSlotId);
+  store.pendingDeleteSlotId=null;
+  closeModal('modalDelSlotConfirm');
+  showToast('알바를 삭제했어요');
+  renderSlots();
+}
+
+// ── ADMIN ────────────────────────────────────────
+async function renderAdmin(){
+  const { data:allProfiles } = await sb.from('profiles').select('*').order('created_at');
+  store.profiles=allProfiles||[];
+  const pending=store.profiles.filter(u=>u.status==='pending');
+  document.getElementById('adminPending').innerHTML=pending.length
+    ? pending.map(u=>`<div class="admin-row"><div class="admin-info"><div class="admin-name">${u.name}</div></div><div class="admin-actions"><button class="btn-ok" onclick="approveUser('${u.id}')">승인</button><button class="btn-deny" onclick="denyUser('${u.id}')">거절</button></div></div>`).join('')
+    : '<div class="empty-state">대기 중인 회원이 없어요</div>';
+  const members=store.profiles.filter(u=>u.status==='approved'&&u.role!=='leader');
+  document.getElementById('adminMembers').innerHTML=members.length
+    ? members.map(u=>`<div class="admin-row"><div class="admin-info"><div class="admin-name">${u.name}</div></div><div class="admin-actions"><button class="btn-del" onclick="requestDelete('${u.id}')">삭제</button></div></div>`).join('')
+    : '<div class="empty-state">승인된 멤버가 없어요</div>';
+  const jobs=await fetchJobs();
+  const allApps=[];
+  jobs.forEach(job=>job.applications.forEach(app=>allApps.push({job,app})));
+  document.getElementById('adminApps').innerHTML=allApps.length
+    ? allApps.map(({job,app})=>`<div class="admin-row"><div class="admin-info"><div class="admin-name">${app.userName}</div><div class="admin-sub">${job.title} · ${job.date} · ${job.hours}h</div></div><div class="admin-actions">${
+        app.status==='pending'
+          ? `<button class="btn-ok" onclick="approveApp('${app.id}')">승인</button><button class="btn-deny" onclick="denyApp('${app.id}')">거절</button>`
+          : app.settled?`<span class="chip chip-approved">정산완료</span>`
+          : `<span class="chip ${app.status==='approved'?'chip-approved':'chip-denied'}">${app.status==='approved'?'승인됨':'거절됨'}</span>`
+      }</div></div>`).join('')
+    : '<div class="empty-state">신청 내역이 없어요</div>';
+}
+
+async function approveUser(id){ await sb.from('profiles').update({status:'approved'}).eq('id',id); showToast('승인했어요'); renderAdmin(); }
+async function denyUser(id){ await sb.from('profiles').update({status:'denied'}).eq('id',id); showToast('거절했어요'); renderAdmin(); }
+async function approveApp(appId){ await sb.from('applications').update({status:'approved'}).eq('id',appId); showToast('신청을 승인했어요'); renderAdmin(); renderJobs(); }
+async function denyApp(appId){ await sb.from('applications').update({status:'denied'}).eq('id',appId); showToast('신청을 거절했어요'); renderAdmin(); }
+
+function requestDelete(id){
+  const u=store.profiles.find(u=>u.id===id);
+  if(!u) return;
+  store.pendingDeleteId=id;
+  document.getElementById('delConfirmText').textContent=`${u.name} 님을 멤버에서 삭제할까요?`;
+  openModal('modalDelConfirm');
+}
+async function confirmDelete(){
+  await sb.from('profiles').delete().eq('id',store.pendingDeleteId);
+  store.pendingDeleteId=null;
+  closeModal('modalDelConfirm');
+  showToast('멤버를 삭제했어요');
+  renderAdmin();
+}
+
+// ── MODAL / UTILS ─────────────────────────────────
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function fmt(n){ return Number(n).toLocaleString('ko-KR')+'원'; }
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// ── INIT ──────────────────────────────────────────
+initSession();
+</script>
+
+</body>
+</html>
