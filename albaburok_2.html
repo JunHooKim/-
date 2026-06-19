@@ -563,6 +563,14 @@ function gotoPage(name){
 }
 
 // ── DASHBOARD ────────────────────────────────────
+async function deleteTx(id){
+  if(!confirm('이 내역을 삭제할까요?')) return;
+  const { error } = await sb.from('transactions').delete().eq('id', id);
+  if(error){ showToast('삭제 중 오류가 발생했어요'); return; }
+  showToast('삭제했어요');
+  await renderDash();
+}
+
 async function addTx(type){
   const amt=parseInt(document.getElementById('txAmount').value);
   const desc=document.getElementById('txDesc').value.trim();
@@ -597,11 +605,15 @@ async function renderDash(){
   } else {
     const iIn=`<svg viewBox="0 0 24 24"><line x1="17" y1="7" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>`;
     const iOut=`<svg viewBox="0 0 24 24"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>`;
+    const isLeader=store.currentUser?.role==='leader';
     feed.innerHTML=store.transactions.slice(0,10).map(t=>`
       <div class="feed-row">
         <div class="feed-ico ${t.type}">${t.type==='in'?iIn:iOut}</div>
         <div class="feed-text"><div class="feed-desc">${t.description}</div><div class="feed-date">${t.date}</div></div>
-        <div class="feed-amt ${t.type}">${t.type==='in'?'+':'-'}${fmt(t.amount)}</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="feed-amt ${t.type}">${t.type==='in'?'+':'-'}${fmt(t.amount)}</div>
+          ${isLeader?`<button onclick="deleteTx('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:16px;line-height:1;padding:2px;">×</button>`:''}
+        </div>
       </div>`).join('');
   }
   renderDonutStats();
