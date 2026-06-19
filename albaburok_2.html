@@ -702,7 +702,10 @@ async function renderJobs(){
     return `<div class="job-card">
       <div class="job-card-top">
         <div><div class="job-title">${job.title}</div><div class="job-meta">${job.place}<br>${job.date} · ${job.hours}시간</div></div>
-        <span class="job-tag">모집 중</span>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          <span class="job-tag">모집 중</span>
+          ${isLeader?`<button class="btn-del" style="font-size:11px;padding:3px 8px;" onclick="deleteJob('${job.id}')">삭제</button>`:''}
+        </div>
       </div>
       <div class="job-pay">
         <span>시간당 수령 <span class="job-pay-hi">${fmt(job.pay_per_hour)}</span></span>
@@ -711,6 +714,14 @@ async function renderJobs(){
       ${action}
     </div>`;
   }).join('');
+}
+
+async function deleteJob(jobId){
+  if(!confirm('이 알바 기록을 삭제할까요? 신청 내역도 함께 삭제돼요.')) return;
+  await sb.from('applications').delete().eq('job_id', jobId);
+  await sb.from('jobs').delete().eq('id', jobId);
+  showToast('삭제했어요');
+  renderJobs();
 }
 
 async function applyJob(jobId){
