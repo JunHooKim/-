@@ -255,7 +255,7 @@ body { font-family: -apple-system,'Pretendard',sans-serif; background:var(--bg);
         <div class="metric-card"><div class="mc-label">잔액</div><div class="mc-value" id="dashBalance">0원</div></div>
       </div>
       <div class="section-label">내역 추가</div>
-      <div class="tx-add-card">
+      <div class="tx-add-card" id="txAddCard" style="display:none;">
         <div class="tx-row">
           <div class="field" style="margin:0;"><label>금액 (원)</label><input type="number" id="txAmount" placeholder="예) 50000"></div>
           <div class="field" style="margin:0;"><label>날짜</label><input type="date" id="txDate"></div>
@@ -531,6 +531,7 @@ function enterApp(){
   document.getElementById('navAdmin').style.display=u.role==='leader'?'':'none';
   document.getElementById('btnAddJob').style.display=u.role==='leader'?'':'none';
   document.getElementById('btnAddSlot').style.display=u.role==='leader'?'':'none';
+  document.getElementById('txAddCard').style.display=u.role==='leader'?'':'none';
   gotoPage('dash');
 }
 
