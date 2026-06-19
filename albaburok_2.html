@@ -612,9 +612,13 @@ async function renderDash(){
         <div class="feed-text"><div class="feed-desc">${t.description}</div><div class="feed-date">${t.date}</div></div>
         <div style="display:flex;align-items:center;gap:8px;">
           <div class="feed-amt ${t.type}">${t.type==='in'?'+':'-'}${fmt(t.amount)}</div>
-          ${isLeader?`<button onclick="deleteTx('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:16px;line-height:1;padding:2px;">×</button>`:''}
+          ${isLeader?`<button data-txid="${t.id}" class="tx-del-btn" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:18px;line-height:1;padding:2px 4px;">×</button>`:''}
         </div>
       </div>`).join('');
+    // 이벤트 위임으로 삭제 처리
+    feed.querySelectorAll('.tx-del-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>deleteTx(btn.getAttribute('data-txid')));
+    });
   }
   renderDonutStats();
 }
@@ -709,14 +713,14 @@ async function renderJobs(){
       else if(myApp.status==='denied') action=`<div class="applied-tag">신청이 거절됐어요</div>`;
       else action=`<div class="applied-tag">${iClock} 신청 완료 · 승인 대기 중</div>`;
     } else {
-      action=`<button class="btn-apply" onclick="applyJob('${job.id}')">신청하기</button>`;
+      action=`<button class="btn-apply" data-applyid="${job.id}">신청하기</button>`;
     }
     return `<div class="job-card">
       <div class="job-card-top">
         <div><div class="job-title">${job.title}</div><div class="job-meta">${job.place}<br>${job.date} · ${job.hours}시간</div></div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
           <span class="job-tag">모집 중</span>
-          ${isLeader?`<button class="btn-del" style="font-size:11px;padding:3px 8px;" onclick="deleteJob('${job.id}')">삭제</button>`:''}
+          ${isLeader?`<button data-jobid="${job.id}" class="job-del-btn btn-del" style="font-size:11px;padding:3px 8px;">삭제</button>`:''}
         </div>
       </div>
       <div class="job-pay">
@@ -726,6 +730,12 @@ async function renderJobs(){
       ${action}
     </div>`;
   }).join('');
+  list.querySelectorAll('.job-del-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>deleteJob(btn.getAttribute('data-jobid')));
+  });
+  list.querySelectorAll('[data-applyid]').forEach(btn=>{
+    btn.addEventListener('click', ()=>applyJob(btn.getAttribute('data-applyid')));
+  });
 }
 
 async function deleteJob(jobId){
@@ -880,9 +890,9 @@ async function renderAdmin(){
   document.getElementById('adminPending').innerHTML=pending.length
     ? pending.map(u=>`<div class="admin-row"><div class="admin-info"><div class="admin-name">${u.name}</div></div><div class="admin-actions"><button class="btn-ok" onclick="approveUser('${u.id}')">승인</button><button class="btn-deny" onclick="denyUser('${u.id}')">거절</button></div></div>`).join('')
     : '<div class="empty-state">대기 중인 회원이 없어요</div>';
-  const members=store.profiles.filter(u=>u.status==='approved'&&u.role!=='leader');
+  const members=store.profiles.filter(u=>u.status==='approved');
   document.getElementById('adminMembers').innerHTML=members.length
-    ? members.map(u=>`<div class="admin-row"><div class="admin-info"><div class="admin-name">${u.name}</div></div><div class="admin-actions"><button class="btn-ok" onclick="setLeader('${u.id}')">리더 지정</button><button class="btn-del" onclick="requestDelete('${u.id}')">삭제</button></div></div>`).join('')
+    ? members.map(u=>`<div class="admin-row"><div class="admin-info"><div class="admin-name">${u.name}${u.role==='leader'?' <span class="leader-badge">리더</span>':''}</div></div><div class="admin-actions">${u.role!=='leader'?`<button class="btn-ok" onclick="setLeader('${u.id}')">리더 지정</button>`:''}<button class="btn-del" onclick="requestDelete('${u.id}')">삭제</button></div></div>`).join('')
     : '<div class="empty-state">승인된 멤버가 없어요</div>';
   const jobs=await fetchJobs();
   const allApps=[];
@@ -903,11 +913,16 @@ async function setLeader(id){
   const u=store.profiles.find(u=>u.id===id);
   if(!u) return;
   if(!confirm(`${u.name} 님을 리더로 지정할까요?\n기존 리더는 일반 멤버로 변경됩니다.`)) return;
-  // 기존 리더 → 멤버로
   const leaders=store.profiles.filter(p=>p.role==='leader');
   for(const l of leaders){ await sb.from('profiles').update({role:'member'}).eq('id',l.id); }
-  // 새 리더 지정
   await sb.from('profiles').update({role:'leader'}).eq('id',id);
+  // 현재 로그인 유저의 role이 바뀐 경우 세션 갱신
+  const p = await loadMyProfile();
+  store.currentUser = p;
+  document.getElementById('topbarLeader').style.display=p.role==='leader'?'':'none';
+  document.getElementById('navAdmin').style.display=p.role==='leader'?'':'none';
+  document.getElementById('btnAddJob').style.display=p.role==='leader'?'':'none';
+  document.getElementById('btnAddSlot').style.display=p.role==='leader'?'':'none';
   showToast(`${u.name} 님이 리더가 됐어요`);
   renderAdmin();
 }
