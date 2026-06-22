@@ -311,6 +311,25 @@ body { font-family: -apple-system,'Pretendard',sans-serif; background:var(--bg);
       <div id="slotList"></div>
     </div>
 
+    <!-- 고객 신청 -->
+    <div class="page" id="pageRequests">
+      <div class="page-header"><div class="page-title">고객 신청</div></div>
+      <div class="admin-section">
+        <div class="admin-h">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          즉흥 알바 신청 (용돈부족)
+        </div>
+        <div class="admin-card" id="reqInstant"><div class="empty-state">신청 내역이 없어요</div></div>
+      </div>
+      <div class="admin-section">
+        <div class="admin-h">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
+          정기 알바 신청 (알바부족)
+        </div>
+        <div class="admin-card" id="reqRegular"><div class="empty-state">신청 내역이 없어요</div></div>
+      </div>
+    </div>
+
     <!-- 관리 -->
     <div class="page" id="pageAdmin">
       <div class="page-header"><div class="page-title">관리</div></div>
@@ -350,6 +369,9 @@ body { font-family: -apple-system,'Pretendard',sans-serif; background:var(--bg);
     </button>
     <button class="nav-item" id="navAdmin" style="display:none;" onclick="gotoPage('admin')">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>관리
+    </button>
+    <button class="nav-item" id="navRequests" style="display:none;" onclick="gotoPage('requests')">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>고객신청
     </button>
   </div>
 </div>
@@ -529,6 +551,7 @@ function enterApp(){
   document.getElementById('topbarName').textContent=u.name;
   document.getElementById('topbarLeader').style.display=u.role==='leader'?'':'none';
   document.getElementById('navAdmin').style.display=u.role==='leader'?'':'none';
+  document.getElementById('navRequests').style.display=u.role==='leader'?'':'none';
   document.getElementById('btnAddJob').style.display=u.role==='leader'?'':'none';
   document.getElementById('btnAddSlot').style.display=u.role==='leader'?'':'none';
   document.getElementById('txAddCard').style.display=u.role==='leader'?'':'none';
@@ -553,13 +576,14 @@ async function initSession(){
 function gotoPage(name){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  const map={dash:[0,'pageDash'],yd:[1,'pageYd'],assign:[2,'pageAssign'],admin:[3,'pageAdmin']};
+  const map={dash:[0,'pageDash'],yd:[1,'pageYd'],assign:[2,'pageAssign'],requests:[3,'pageRequests'],admin:[4,'pageAdmin']};
   const [idx,pid]=map[name];
   document.getElementById(pid).classList.add('active');
   document.querySelectorAll('.nav-item')[idx]?.classList.add('active');
   if(name==='dash') renderDash();
   if(name==='yd') renderJobs();
   if(name==='assign') renderSlots();
+  if(name==='requests') renderRequests();
   if(name==='admin') renderAdmin();
 }
 
@@ -881,6 +905,52 @@ async function confirmDeleteSlot(){
   closeModal('modalDelSlotConfirm');
   showToast('알바를 삭제했어요');
   renderSlots();
+}
+
+// ── 고객 신청 ─────────────────────────────────────
+async function renderRequests(){
+  const { data, error } = await sb.from('customer_requests').select('*').order('created_at',{ascending:false});
+  if(error){ console.error(error); return; }
+  const all = data||[];
+  const instant = all.filter(r=>r.type==='instant');
+  const regular = all.filter(r=>r.type==='regular');
+  const statusChip = s => s==='pending'
+    ? `<span class="chip" style="background:#FFF8E7;color:#7A5C00;">대기중</span>`
+    : s==='confirmed'
+    ? `<span class="chip chip-approved">확정</span>`
+    : `<span class="chip chip-denied">거절</span>`;
+  const renderList = (list, elId) => {
+    const el = document.getElementById(elId);
+    if(!list.length){ el.innerHTML='<div class="empty-state">신청 내역이 없어요</div>'; return; }
+    el.innerHTML = list.map(r=>`
+      <div class="admin-row" style="flex-wrap:wrap;gap:8px;">
+        <div class="admin-info">
+          <div class="admin-name">${r.customer_name} · ${r.contact}</div>
+          <div class="admin-sub">${r.request_date} ${r.request_time} · ${r.content}</div>
+        </div>
+        <div class="admin-actions">
+          ${r.status==='pending'
+            ? `<button class="btn-ok" onclick="updateRequest('${r.id}','confirmed')">확정</button>
+               <button class="btn-deny" onclick="updateRequest('${r.id}','rejected')">거절</button>`
+            : statusChip(r.status)
+          }
+          <button class="btn-del" onclick="deleteRequest('${r.id}')">삭제</button>
+        </div>
+      </div>`).join('');
+  };
+  renderList(instant, 'reqInstant');
+  renderList(regular, 'reqRegular');
+}
+async function updateRequest(id, status){
+  await sb.from('customer_requests').update({status}).eq('id',id);
+  showToast(status==='confirmed'?'확정했어요':'거절했어요');
+  renderRequests();
+}
+async function deleteRequest(id){
+  if(!confirm('이 신청을 삭제할까요?')) return;
+  await sb.from('customer_requests').delete().eq('id',id);
+  showToast('삭제했어요');
+  renderRequests();
 }
 
 // ── ADMIN ────────────────────────────────────────
