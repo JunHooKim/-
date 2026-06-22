@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>알바부족 - 알바 신청</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --green: #1D9E75; --green-light: #E1F5EE; --green-dark: #0F6E56;
+  --orange-dark: #993C1D; --blue: #185FA5; --blue-light: #E6F1FB;
+  --red-light: #FCEBEB; --red-dark: #A32D2D;
+  --bg: #F7F7F5; --surface: #FFFFFF;
+  --border: rgba(0,0,0,0.09); --border-md: rgba(0,0,0,0.15);
+  --text: #1a1a1a; --text-2: #666; --text-3: #999;
+  --radius: 14px; --radius-sm: 8px;
+}
+body { font-family: -apple-system,'Pretendard',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+.header { background:var(--surface); border-bottom:0.5px solid var(--border); padding:0 1.2rem; height:56px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10; }
+.header-left { display:flex; align-items:center; gap:10px; }
+.header-icon { width:36px; height:36px; background:var(--green); border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.header-icon svg { width:18px; height:18px; stroke:#fff; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.header-title { font-size:17px; font-weight:700; letter-spacing:-0.3px; }
+.header-sub { font-size:12px; color:var(--text-3); margin-top:1px; }
+.header-user { font-size:12px; color:var(--text-2); display:flex; align-items:center; gap:8px; }
+.logout-btn { background:none; border:0.5px solid var(--border-md); color:var(--text-2); cursor:pointer; padding:4px 10px; border-radius:var(--radius-sm); font-size:12px; }
+
+.wrap { max-width:480px; margin:0 auto; padding:1.2rem 1rem 3rem; }
+
+/* AUTH */
+.auth-wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:2rem 1rem; }
+.auth-box { background:var(--surface); border-radius:20px; border:0.5px solid var(--border); padding:2rem; width:100%; max-width:360px; }
+.auth-logo { text-align:center; margin-bottom:1.8rem; }
+.auth-logo-icon { width:52px; height:52px; background:var(--green); border-radius:14px; display:inline-flex; align-items:center; justify-content:center; margin-bottom:10px; }
+.auth-logo-icon svg { width:26px; height:26px; stroke:#fff; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.auth-logo h1 { font-size:20px; font-weight:700; }
+.auth-logo p { font-size:13px; color:var(--text-2); margin-top:3px; }
+.auth-tabs { display:flex; background:var(--bg); border-radius:var(--radius-sm); padding:3px; margin-bottom:1.4rem; gap:3px; }
+.auth-tab { flex:1; text-align:center; padding:7px; font-size:13px; border-radius:6px; cursor:pointer; color:var(--text-2); border:none; background:none; font-weight:500; }
+.auth-tab.active { background:var(--surface); color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+.field { margin-bottom:12px; }
+.field label { display:block; font-size:12px; color:var(--text-2); margin-bottom:5px; font-weight:500; }
+.field input, .field select, .field textarea { width:100%; padding:10px 12px; border:0.5px solid var(--border-md); border-radius:var(--radius-sm); font-size:14px; background:var(--bg); color:var(--text); outline:none; transition:border 0.15s; font-family:inherit; }
+.field input:focus, .field textarea:focus { border-color:var(--green); background:#fff; }
+.btn-primary { width:100%; padding:11px; background:var(--green); color:#fff; border:none; border-radius:var(--radius-sm); font-size:14px; font-weight:600; cursor:pointer; margin-top:4px; }
+.btn-primary:hover { background:var(--green-dark); }
+.auth-error { background:var(--red-light); border:0.5px solid #F09595; border-radius:var(--radius-sm); padding:10px 12px; font-size:12px; color:var(--red-dark); margin-top:10px; display:none; }
+
+.divider { display:flex; align-items:center; gap:10px; margin:14px 0; color:var(--text-3); font-size:12px; }
+.divider::before, .divider::after { content:''; flex:1; height:0.5px; background:var(--border-md); }
+
+.btn-google { width:100%; padding:11px; background:var(--surface); color:var(--text); border:0.5px solid var(--border-md); border-radius:var(--radius-sm); font-size:14px; font-weight:500; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; }
+.btn-google:hover { background:var(--bg); }
+.btn-google svg { width:18px; height:18px; flex-shrink:0; }
+
+/* PROFILE SETUP */
+.setup-box { background:var(--surface); border-radius:20px; border:0.5px solid var(--border); padding:2rem; width:100%; max-width:360px; }
+.setup-box h2 { font-size:18px; font-weight:700; margin-bottom:6px; }
+.setup-box p { font-size:13px; color:var(--text-2); margin-bottom:1.4rem; line-height:1.5; }
+
+/* TYPE SELECT */
+.section-label { font-size:12px; color:var(--text-3); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px; margin-top:1.2rem; }
+.type-cards { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:1.4rem; }
+.type-card { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius); padding:1.2rem 1rem; cursor:pointer; transition:all 0.15s; text-align:center; }
+.type-card:hover { border-color:var(--green); }
+.type-card.selected { border-color:var(--green); background:var(--green-light); }
+.type-card-icon { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; }
+.type-card.instant .type-card-icon { background:#FFF0E6; }
+.type-card.regular .type-card-icon { background:var(--blue-light); }
+.type-card svg { width:22px; height:22px; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.type-card.instant svg { stroke:var(--orange-dark); }
+.type-card.regular svg { stroke:var(--blue); }
+.type-card-title { font-size:14px; font-weight:700; margin-bottom:4px; }
+.type-card-desc { font-size:11px; color:var(--text-2); line-height:1.4; }
+
+/* FORM */
+.form-card { background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius); padding:1.2rem; margin-bottom:1rem; }
+.form-title { font-size:13px; font-weight:600; color:var(--text-2); margin-bottom:12px; display:flex; align-items:center; gap:6px; }
+.form-title svg { width:14px; height:14px; stroke:var(--text-2); fill:none; stroke-width:2; stroke-linecap:round; }
+.row2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.type-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:99px; font-size:12px; font-weight:600; margin-bottom:14px; }
+.type-badge.instant { background:#FFF0E6; color:var(--orange-dark); }
+.type-badge.regular { background:var(--blue-light); color:var(--blue); }
+
+/* 요일 선택 */
+.day-chip { display:inline-flex; align-items:center; gap:5px; background:var(--surface); border:1px solid var(--border-md); border-radius:99px; padding:6px 14px; font-size:13px; font-weight:500; cursor:pointer; user-select:none; }
+.day-chip input { display:none; }
+.day-chip:has(input:checked) { background:var(--green-light); border-color:var(--green); color:var(--green-dark); font-weight:700; }
+
+.btn-submit { width:100%; padding:14px; background:var(--green); color:#fff; border:none; border-radius:var(--radius-sm); font-size:15px; font-weight:700; cursor:pointer; margin-top:4px; }
+.btn-submit:hover { background:var(--green-dark); }
+.btn-submit:disabled { background:#ccc; cursor:not-allowed; }
+
+/* 내 신청 목록 */
+.req-card { background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius); padding:14px; margin-bottom:10px; }
+.req-type { font-size:11px; font-weight:600; padding:2px 8px; border-radius:99px; display:inline-block; margin-bottom:8px; }
+.req-type.instant { background:#FFF0E6; color:var(--orange-dark); }
+.req-type.regular { background:var(--blue-light); color:var(--blue); }
+.req-content { font-size:14px; font-weight:500; margin-bottom:4px; }
+.req-meta { font-size:12px; color:var(--text-3); }
+.req-status { font-size:12px; font-weight:600; margin-top:8px; padding-top:8px; border-top:0.5px solid var(--border); }
+.status-pending { color:#7A5C00; }
+.status-confirmed { color:var(--green-dark); }
+.status-rejected { color:var(--orange-dark); }
+
+.notice { background:#FFF8E7; border:0.5px solid #F0C040; border-radius:var(--radius-sm); padding:10px 12px; font-size:12px; color:#7A5C00; margin-bottom:1rem; line-height:1.5; }
+
+/* BOTTOM NAV */
+.bottom-nav { background:var(--surface); border-top:0.5px solid var(--border); position:fixed; bottom:0; left:0; right:0; display:flex; z-index:100; }
+.nav-item { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:8px 4px 10px; cursor:pointer; border:none; background:none; color:var(--text-3); font-size:10px; gap:3px; }
+.nav-item svg { width:22px; height:22px; stroke:var(--text-3); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; transition:stroke 0.15s; }
+.nav-item.active { color:var(--green); }
+.nav-item.active svg { stroke:var(--green); }
+.page { display:none; }
+.page.active { display:block; }
+
+/* SUCCESS */
+.success-wrap { text-align:center; padding:3rem 1.5rem; }
+.success-icon { width:72px; height:72px; background:var(--green-light); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.2rem; }
+.success-icon svg { width:34px; height:34px; stroke:var(--green-dark); fill:none; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; }
+.success-title { font-size:20px; font-weight:700; margin-bottom:8px; }
+.success-desc { font-size:14px; color:var(--text-2); line-height:1.7; margin-bottom:1.6rem; }
+.btn-again { background:var(--green-light); color:var(--green-dark); border:none; border-radius:var(--radius-sm); padding:11px 24px; font-size:14px; font-weight:600; cursor:pointer; }
+
+.empty-state { padding:2rem; text-align:center; color:var(--text-3); font-size:13px; }
+</style>
+</head>
+<body>
+
+<!-- 로그인 화면 -->
+<div id="authWrap" class="auth-wrap">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">
+        <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+      </div>
+      <h1>알바부족</h1>
+      <p>알바 신청 고객 전용</p>
+    </div>
+    <div id="authTabs" class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login')">로그인</button>
+      <button class="auth-tab" onclick="switchTab('signup')">회원가입</button>
+    </div>
+    <!-- 로그인 -->
+    <div id="loginForm">
+      <div class="field"><label>이메일</label><input type="email" id="loginEmail" placeholder="example@gmail.com"></div>
+      <div class="field"><label>비밀번호</label><input type="password" id="loginPw" placeholder="비밀번호 입력"></div>
+      <div class="auth-error" id="loginError"></div>
+      <button class="btn-primary" onclick="doLogin()" style="margin-top:12px;">로그인</button>
+      <div class="divider">또는</div>
+      <button class="btn-google" onclick="doGoogleLogin()">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Google로 로그인
+      </button>
+    </div>
+    <!-- 회원가입 -->
+    <div id="signupForm" style="display:none;">
+      <div class="field"><label>이름</label><input type="text" id="regName" placeholder="홍길동"></div>
+      <div class="field"><label>연락처</label><input type="tel" id="regContact" placeholder="010-0000-0000"></div>
+      <div class="field"><label>이메일</label><input type="email" id="regEmail" placeholder="example@gmail.com"></div>
+      <div class="field"><label>비밀번호</label><input type="password" id="regPw" placeholder="6자 이상"></div>
+      <div class="auth-error" id="signupError"></div>
+      <button class="btn-primary" onclick="doSignup()" style="margin-top:12px;">회원가입</button>
+      <div class="divider">또는</div>
+      <button class="btn-google" onclick="doGoogleLogin()">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Google로 시작하기
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 구글 로그인 후 프로필 설정 -->
+<div id="setupWrap" class="auth-wrap" style="display:none;">
+  <div class="setup-box">
+    <h2>정보 입력</h2>
+    <p>처음 이용하시는군요!<br>이름과 연락처를 입력해주세요.</p>
+    <div class="field"><label>이름</label><input type="text" id="setupName" placeholder="홍길동"></div>
+    <div class="field"><label>연락처</label><input type="tel" id="setupContact" placeholder="010-0000-0000"></div>
+    <div class="auth-error" id="setupError"></div>
+    <button class="btn-primary" onclick="saveProfile()" style="margin-top:8px;">시작하기</button>
+  </div>
+</div>
+
+<!-- 앱 -->
+<div id="appWrap" style="display:none;">
+  <div class="header">
+    <div class="header-left">
+      <div class="header-icon">
+        <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+      </div>
+      <div>
+        <div class="header-title">알바부족</div>
+      </div>
+    </div>
+    <div class="header-user">
+      <span id="headerName"></span>
+      <button class="logout-btn" onclick="doLogout()">로그아웃</button>
+    </div>
+  </div>
+
+  <div style="max-width:480px;margin:0 auto;padding:1rem 1rem 80px;">
+    <!-- 신청하기 -->
+    <div class="page active" id="pageApply">
+      <div class="section-label" style="margin-top:0.2rem;">신청 유형 선택</div>
+      <div class="type-cards">
+        <div class="type-card instant" id="typeInstant" onclick="selectType('instant')">
+          <div class="type-card-icon">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <div class="type-card-title">알바 신청하기</div>
+          <div class="type-card-desc">두유 제조, 청소 등<br>일회성 작업</div>
+        </div>
+        <div class="type-card regular" id="typeRegular" onclick="selectType('regular')">
+          <div class="type-card-icon">
+            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <div class="type-card-title">정기 알바</div>
+          <div class="type-card-desc">매주 반복되는<br>고정 작업</div>
+        </div>
+      </div>
+
+      <div id="formBody" style="display:none;">
+        <div id="typeBadge"></div>
+
+        <!-- 고객 정보 (읽기 전용) -->
+        <div class="form-card">
+          <div class="form-title">
+            <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            고객 정보
+          </div>
+          <div class="field"><label>이름</label><input type="text" id="custName" readonly style="background:#f0f0ee;color:var(--text-2);"></div>
+          <div class="field" style="margin:0;"><label>연락처</label><input type="tel" id="custContact" readonly style="background:#f0f0ee;color:var(--text-2);"></div>
+        </div>
+
+        <!-- 일정 -->
+        <div class="form-card">
+          <div class="form-title">
+            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
+            희망 일정
+          </div>
+          <div id="instantSchedule">
+            <div class="row2">
+              <div class="field" style="margin:0;"><label>날짜</label><input type="date" id="custDate"></div>
+              <div class="field" style="margin:0;"><label>시간</label><input type="time" id="custTime"></div>
+            </div>
+          </div>
+          <div id="regularSchedule" style="display:none;">
+            <div class="field">
+              <label>알바 종류</label>
+              <select id="regularJob" onchange="onRegularJobChange()">
+                <option value="">선택해주세요</option>
+                <option value="두유">두유 제조</option>
+                <option value="화장실청소">화장실 청소</option>
+              </select>
+            </div>
+            <div id="douyuDays" style="display:none;">
+              <label style="font-size:12px;color:var(--text-2);font-weight:500;display:block;margin-bottom:8px;">희망 요일 (복수 선택 가능)</label>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                <label class="day-chip"><input type="checkbox" value="월"> 월</label>
+                <label class="day-chip"><input type="checkbox" value="화"> 화</label>
+                <label class="day-chip"><input type="checkbox" value="수"> 수</label>
+                <label class="day-chip"><input type="checkbox" value="목"> 목</label>
+                <label class="day-chip"><input type="checkbox" value="금"> 금</label>
+                <label class="day-chip"><input type="checkbox" value="토"> 토</label>
+                <label class="day-chip"><input type="checkbox" value="일"> 일</label>
+              </div>
+            </div>
+            <div id="bathroomInfo" style="display:none;">
+              <div class="notice" style="margin:0;">화장실 청소는 월 2회 진행돼요. 정확한 날짜는 담당자가 연락 후 조율해드려요.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 작업 내용 (즉흥만) -->
+        <div class="form-card" id="contentCard">
+          <div class="form-title">
+            <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="3" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="3" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg>
+            작업 내용
+          </div>
+          <div class="field" style="margin:0;">
+            <textarea id="custContent" placeholder="어떤 작업이 필요한지 자세히 적어주세요.&#10;예) 두유 50개 제조, 오전 중 완료 희망" style="resize:none;height:90px;line-height:1.5;"></textarea>
+          </div>
+        </div>
+
+        <div class="notice">신청 후 담당자가 확인하여 연락드립니다.</div>
+        <button class="btn-submit" id="submitBtn" onclick="submitRequest()">신청하기</button>
+      </div>
+
+      <!-- 완료 -->
+      <div class="success-wrap" id="successWrap" style="display:none;">
+        <div class="success-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="success-title">신청이 완료됐어요!</div>
+        <div class="success-desc" id="successDesc"></div>
+        <button class="btn-again" onclick="resetForm()">다시 신청하기</button>
+      </div>
+    </div>
+
+    <!-- 내 신청 목록 -->
+    <div class="page" id="pageHistory">
+      <div class="section-label" style="margin-top:0.2rem;">내 신청 내역</div>
+      <div id="historyList"><div class="empty-state">신청 내역이 없어요</div></div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <button class="nav-item active" onclick="gotoPage('apply')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      신청하기
+    </button>
+    <button class="nav-item" onclick="gotoPage('history')">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      내 신청
+    </button>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://qmgnjpmejaxqkinwuphx.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtZ25qcG1lamF4cWtpbnd1cGh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3Mzk1NTQsImV4cCI6MjA5NzMxNTU1NH0.-5Y34GqTqVpimRGOCX-c3MKZCCvqowStt8C_dJPXUEw';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let currentProfile = null;
+let selectedType = null;
+
+// ── AUTH ──────────────────────────────────────────
+function switchTab(tab){
+  document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('active',(tab==='login'&&i===0)||(tab==='signup'&&i===1)));
+  document.getElementById('loginForm').style.display = tab==='login'?'':'none';
+  document.getElementById('signupForm').style.display = tab==='signup'?'':'none';
+  clearErr('loginError'); clearErr('signupError');
+}
+function showErr(id,msg){ const e=document.getElementById(id); e.textContent=msg; e.style.display='block'; }
+function clearErr(id){ const e=document.getElementById(id); if(e){e.textContent='';e.style.display='none';} }
+
+async function doLogin(){
+  clearErr('loginError');
+  const email=document.getElementById('loginEmail').value.trim();
+  const pw=document.getElementById('loginPw').value.trim();
+  if(!email||!pw){ showErr('loginError','이메일과 비밀번호를 입력해주세요.'); return; }
+  const { error } = await sb.auth.signInWithPassword({ email, password:pw });
+  if(error){ showErr('loginError','이메일 또는 비밀번호가 맞지 않아요.'); return; }
+  await initApp();
+}
+
+async function doSignup(){
+  clearErr('signupError');
+  const name=document.getElementById('regName').value.trim();
+  const contact=document.getElementById('regContact').value.trim();
+  const email=document.getElementById('regEmail').value.trim();
+  const pw=document.getElementById('regPw').value.trim();
+  if(!name||!contact||!email||!pw){ showErr('signupError','모든 항목을 입력해주세요.'); return; }
+  if(pw.length<6){ showErr('signupError','비밀번호는 6자 이상이에요.'); return; }
+  const { data, error } = await sb.auth.signUp({ email, password:pw });
+  if(error){ showErr('signupError','가입 중 오류: '+error.message); return; }
+  // 프로필 저장
+  await sb.from('customer_profiles').insert({ id:data.user.id, name, contact });
+  await initApp();
+}
+
+async function doGoogleLogin(){
+  const redirectTo = window.location.href.split('?')[0];
+  await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo }
+  });
+}
+
+async function doLogout(){
+  await sb.auth.signOut();
+  currentUser=null; currentProfile=null;
+  document.getElementById('appWrap').style.display='none';
+  document.getElementById('authWrap').style.display='flex';
+  switchTab('login');
+}
+
+async function initApp(){
+  const { data:{ user } } = await sb.auth.getUser();
+  if(!user) return;
+  currentUser = user;
+  // 프로필 확인
+  const { data:profile } = await sb.from('customer_profiles').select('*').eq('id', user.id).single();
+  if(!profile){
+    // 구글 로그인 후 프로필 없으면 설정 화면
+    document.getElementById('authWrap').style.display='none';
+    document.getElementById('setupWrap').style.display='flex';
+    return;
+  }
+  currentProfile = profile;
+  enterApp();
+}
+
+async function saveProfile(){
+  const name=document.getElementById('setupName').value.trim();
+  const contact=document.getElementById('setupContact').value.trim();
+  if(!name||!contact){ showErr('setupError','이름과 연락처를 입력해주세요.'); return; }
+  const { error } = await sb.from('customer_profiles').insert({ id:currentUser.id, name, contact });
+  if(error){ showErr('setupError','저장 중 오류가 발생했어요.'); return; }
+  currentProfile = { id:currentUser.id, name, contact };
+  document.getElementById('setupWrap').style.display='none';
+  enterApp();
+}
+
+function enterApp(){
+  document.getElementById('authWrap').style.display='none';
+  document.getElementById('setupWrap').style.display='none';
+  document.getElementById('appWrap').style.display='block';
+  document.getElementById('headerName').textContent = currentProfile.name;
+  document.getElementById('custName').value = currentProfile.name;
+  document.getElementById('custContact').value = currentProfile.contact;
+  gotoPage('apply');
+}
+
+// ── NAV ──────────────────────────────────────────
+function gotoPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const map={apply:[0,'pageApply'],history:[1,'pageHistory']};
+  const [idx,pid]=map[name];
+  document.getElementById(pid).classList.add('active');
+  document.querySelectorAll('.nav-item')[idx]?.classList.add('active');
+  if(name==='history') renderHistory();
+}
+
+// ── 신청 폼 ───────────────────────────────────────
+function selectType(type){
+  selectedType=type;
+  document.getElementById('typeInstant').classList.toggle('selected',type==='instant');
+  document.getElementById('typeRegular').classList.toggle('selected',type==='regular');
+  document.getElementById('formBody').style.display='';
+  document.getElementById('instantSchedule').style.display=type==='instant'?'':'none';
+  document.getElementById('regularSchedule').style.display=type==='regular'?'':'none';
+  document.getElementById('contentCard').style.display=type==='instant'?'':'none';
+  document.getElementById('typeBadge').innerHTML=type==='instant'
+    ?`<div class="type-badge instant">⚡ 알바 신청하기</div>`
+    :`<div class="type-badge regular">📅 정기 알바 신청</div>`;
+  document.getElementById('successWrap').style.display='none';
+  document.getElementById('formBody').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function onRegularJobChange(){
+  const val=document.getElementById('regularJob').value;
+  document.getElementById('douyuDays').style.display=val==='두유'?'':'none';
+  document.getElementById('bathroomInfo').style.display=val==='화장실청소'?'':'none';
+}
+
+async function submitRequest(){
+  if(!selectedType||!currentProfile) return;
+  let finalContent='', reqDate='0000-00-00', reqTime='00:00';
+
+  if(selectedType==='instant'){
+    const date=document.getElementById('custDate').value;
+    const time=document.getElementById('custTime').value;
+    const content=document.getElementById('custContent').value.trim();
+    if(!date){ alert('날짜를 선택해주세요.'); return; }
+    if(!time){ alert('시간을 선택해주세요.'); return; }
+    if(!content){ alert('작업 내용을 입력해주세요.'); return; }
+    reqDate=date; reqTime=time; finalContent=content;
+  } else {
+    const job=document.getElementById('regularJob').value;
+    if(!job){ alert('알바 종류를 선택해주세요.'); return; }
+    if(job==='두유'){
+      const days=[...document.querySelectorAll('#douyuDays input:checked')].map(c=>c.value);
+      if(!days.length){ alert('희망 요일을 선택해주세요.'); return; }
+      finalContent=`두유 제조 - 희망 요일: ${days.join(', ')}`;
+    } else {
+      finalContent='화장실 청소 - 월 2회 (날짜 추후 조율)';
+    }
+  }
+
+  const btn=document.getElementById('submitBtn');
+  btn.disabled=true; btn.textContent='신청 중...';
+
+  const { error } = await sb.from('customer_requests').insert({
+    type:selectedType,
+    customer_name:currentProfile.name,
+    contact:currentProfile.contact,
+    request_date:reqDate,
+    request_time:reqTime,
+    content:finalContent,
+    user_id:currentUser.id
+  });
+
+  if(error){
+    alert('신청 중 오류가 발생했어요.'); console.error(error);
+    btn.disabled=false; btn.textContent='신청하기';
+    return;
+  }
+
+  document.getElementById('formBody').style.display='none';
+  document.getElementById('successWrap').style.display='block';
+  document.getElementById('successDesc').innerHTML=
+    `<strong>${currentProfile.name}</strong> 님의 신청이 접수됐어요.<br><br>
+    <strong>${finalContent}</strong><br><br>
+    담당자 확인 후 <strong>${currentProfile.contact}</strong>로 연락드릴게요.`;
+  btn.disabled=false; btn.textContent='신청하기';
+}
+
+function resetForm(){
+  selectedType=null;
+  document.getElementById('typeInstant').classList.remove('selected');
+  document.getElementById('typeRegular').classList.remove('selected');
+  document.getElementById('formBody').style.display='none';
+  document.getElementById('successWrap').style.display='none';
+  document.getElementById('typeBadge').innerHTML='';
+  document.getElementById('regularJob').value='';
+  document.getElementById('douyuDays').style.display='none';
+  document.getElementById('bathroomInfo').style.display='none';
+  document.querySelectorAll('#douyuDays input').forEach(c=>c.checked=false);
+  ['custDate','custTime','custContent'].forEach(id=>document.getElementById(id).value='');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── 내 신청 목록 ──────────────────────────────────
+async function renderHistory(){
+  const { data, error } = await sb.from('customer_requests')
+    .select('*').eq('user_id', currentUser.id).order('created_at',{ascending:false});
+  const list=document.getElementById('historyList');
+  if(error||!data?.length){ list.innerHTML='<div class="empty-state">신청 내역이 없어요</div>'; return; }
+  const statusText={pending:'⏳ 검토 중',confirmed:'✅ 확정',rejected:'❌ 거절'};
+  const statusClass={pending:'status-pending',confirmed:'status-confirmed',rejected:'status-rejected'};
+  list.innerHTML=data.map(r=>`
+    <div class="req-card">
+      <span class="req-type ${r.type}">${r.type==='instant'?'알바 신청':'정기 알바'}</span>
+      <div class="req-content">${r.content}</div>
+      <div class="req-meta">${r.request_date!=='0000-00-00'?r.request_date+' '+r.request_time:''} · ${new Date(r.created_at).toLocaleDateString('ko-KR')} 신청</div>
+      <div class="req-status ${statusClass[r.status]}">${statusText[r.status]}</div>
+    </div>`).join('');
+}
+
+// ── INIT ──────────────────────────────────────────
+(async()=>{
+  const { data:{ session } } = await sb.auth.getSession();
+  if(session) await initApp();
+})();
+
+// 구글 로그인 후 리다이렉트 처리
+sb.auth.onAuthStateChange(async(event, session)=>{
+  if(event==='SIGNED_IN' && session && !currentUser){
+    await initApp();
+  }
+});
+</script>
+</body>
+</html>
