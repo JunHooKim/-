@@ -534,23 +534,19 @@ async function renderHistory(){
 // ── INIT ──────────────────────────────────────────
 let appInitialized = false;
 
-async function tryInit(){
-  if(appInitialized) return;
-  const { data:{ session } } = await sb.auth.getSession();
-  if(!session) return;
-  appInitialized = true;
-  await initApp();
-}
-
-tryInit();
-
 sb.auth.onAuthStateChange(async(event, session)=>{
-  if((event==='SIGNED_IN' || event==='INITIAL_SESSION') && session && !appInitialized){
-    appInitialized = true;
-    await initApp();
-  }
   if(event==='SIGNED_OUT'){
     appInitialized = false;
+    currentUser = null; currentProfile = null;
+    document.getElementById('appWrap').style.display='none';
+    document.getElementById('setupWrap').style.display='none';
+    document.getElementById('authWrap').style.display='flex';
+    switchTab('login');
+    return;
+  }
+  if(session && !appInitialized){
+    appInitialized = true;
+    await initApp();
   }
 });
 </script>
