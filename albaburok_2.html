@@ -572,6 +572,16 @@ async function initSession(){
   }
 }
 
+// 새로고침 시 세션 복원
+sb.auth.onAuthStateChange(async(event, session)=>{
+  if(event==='INITIAL_SESSION' && session && !store.currentUser){
+    const p = await loadMyProfile();
+    if(!p) return;
+    store.currentUser=p;
+    if(p.status==='approved') enterApp();
+  }
+});
+
 // ── NAV ──────────────────────────────────────────
 function gotoPage(name){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
