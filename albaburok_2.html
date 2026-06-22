@@ -317,7 +317,7 @@ body { font-family: -apple-system,'Pretendard',sans-serif; background:var(--bg);
       <div class="admin-section">
         <div class="admin-h">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          즉흥 알바 신청 (용돈부족)
+          알바 신청 (용돈부족)
         </div>
         <div class="admin-card" id="reqInstant"><div class="empty-state">신청 내역이 없어요</div></div>
       </div>
@@ -576,7 +576,7 @@ async function initSession(){
 function gotoPage(name){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  const map={dash:[0,'pageDash'],yd:[1,'pageYd'],assign:[2,'pageAssign'],requests:[3,'pageRequests'],admin:[4,'pageAdmin']};
+  const map={dash:[0,'pageDash'],yd:[1,'pageYd'],assign:[2,'pageAssign'],admin:[3,'pageAdmin'],requests:[4,'pageRequests']};
   const [idx,pid]=map[name];
   document.getElementById(pid).classList.add('active');
   document.querySelectorAll('.nav-item')[idx]?.classList.add('active');
