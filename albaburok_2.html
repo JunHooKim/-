@@ -507,8 +507,12 @@ async function loadMyProfile(){
   return data;
 }
 
-// 이름을 내부 이메일로 변환 (이름 → 이름@albaburok.app)
-function nameToEmail(name){ return name.trim().toLowerCase().replace(/\s+/g,'') + '@albaburok.app'; }
+// 이름을 내부 이메일로 변환 (한글 포함 모든 이름 지원)
+function nameToEmail(name){
+  // 이름을 base64로 인코딩해서 이메일 로컬파트로 사용
+  const encoded = btoa(encodeURIComponent(name.trim())).replace(/[^a-zA-Z0-9]/g,'').toLowerCase();
+  return encoded + '@albaburok.app';
+}
 
 async function doLogin(){
   clearErr('loginError');
