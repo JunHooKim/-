@@ -1,9 +1,9 @@
 const CACHE_NAME = 'albaburok-v1';
 const URLS_TO_CACHE = [
-  '/albaburok_2.html',
-  '/customer.html',
-  '/manifest.json',
-  '/manifest-customer.json'
+  '/-/albaburok_2.html',
+  '/-/customer.html',
+  '/-/manifest.json',
+  '/-/manifest-customer.json'
 ];
 
 self.addEventListener('install', e => {
@@ -23,9 +23,35 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Supabase 요청은 캐시 안 함
   if (e.request.url.includes('supabase.co')) return;
   e.respondWith(
     fetch(e.request).catch(() => caches.match(e.request))
+  );
+});
+
+// 푸시 알림 수신
+self.addEventListener('push', e => {
+  let data = { title: '알바부족', body: '새 알림이 있어요!' };
+  try { data = e.data.json(); } catch {}
+  e.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/-/icon-192.png',
+      badge: '/-/icon-192.png',
+      vibrate: [200, 100, 200],
+    })
+  );
+});
+
+// 알림 클릭 시 앱 열기
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(
+    clients.matchAll({ type: 'window' }).then(list => {
+      for (const c of list) {
+        if (c.url.includes('albaburok') && 'focus' in c) return c.focus();
+      }
+      return clients.openWindow('https://junhookim.github.io/-/albaburok_2.html');
+    })
   );
 });

@@ -579,6 +579,8 @@ function enterApp(){
   document.getElementById('btnAddSlot').style.display=u.role==='leader'?'':'none';
   document.getElementById('txAddCard').style.display=u.role==='leader'?'':'none';
   gotoPage('dash');
+  // 푸시 알림 구독
+  subscribePush();
 }
 
 async function initSession(){
@@ -851,6 +853,8 @@ async function submitJob(){
   ['jobName','jobPlace','jobDate','jobHours'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('jobPayPerHour').value='8000';
   showToast('알바가 등록됐어요!');
+  // 멤버들에게 푸시 알림 발송
+  sendPushNotification('🍞 용돈부족 알바!', `${title} 알바가 올라왔어요. 지금 신청하세요!`);
   renderJobs();
 }
 
@@ -1078,6 +1082,56 @@ async function confirmDelete(){
   closeModal('modalDelConfirm');
   showToast('멤버를 삭제했어요');
   renderAdmin();
+}
+
+// ── 푸시 알림 ─────────────────────────────────────
+const VAPID_PUBLIC_KEY = 'BN0uMbCQIW0GrFYAvOr1QIwT0DtkA4JWtQy9rNxp_faMxtoMu-9lrxd8Fn9BUvh8l0oZ16z1R4xwbu3e7qI749g';
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return new Uint8Array([...raw].map(c => c.charCodeAt(0)));
+}
+
+async function subscribePush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return;
+
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+
+    const { endpoint, keys } = sub.toJSON();
+    await sb.from('push_subscriptions').upsert({
+      user_id: store.currentUser.id,
+      endpoint,
+      p256dh: keys.p256dh,
+      auth: keys.auth
+    }, { onConflict: 'user_id,endpoint' });
+  } catch(e) {
+    console.log('푸시 구독 실패:', e);
+  }
+}
+
+async function sendPushNotification(title, body) {
+  try {
+    const { data:{ session } } = await sb.auth.getSession();
+    await fetch(`https://qmgnjpmejaxqkinwuphx.supabase.co/functions/v1/send-push`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ title, body, exclude_user_id: store.currentUser.id })
+    });
+  } catch(e) {
+    console.log('알림 발송 실패:', e);
+  }
 }
 
 // ── MODAL / UTILS ─────────────────────────────────
