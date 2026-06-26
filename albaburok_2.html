@@ -242,6 +242,9 @@ body { font-family: -apple-system,'Pretendard',sans-serif; background:var(--bg);
         <span id="topbarName"></span>
         <span id="topbarLeader" class="leader-badge" style="display:none;">리더</span>
       </div>
+      <button id="btnPush" onclick="requestPushPermission()" style="display:none;background:none;border:0.5px solid var(--border-md);color:var(--text-2);cursor:pointer;padding:5px 10px;border-radius:var(--radius-sm);font-size:12px;" title="알림 허용">
+        🔔
+      </button>
       <button class="logout-btn" onclick="doLogout()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         로그아웃
@@ -387,7 +390,10 @@ body { font-family: -apple-system,'Pretendard',sans-serif; background:var(--bg);
     <div class="field"><label>알바 이름</label><input type="text" id="jobName" placeholder="예) 두유 제조"></div>
     <div class="field"><label>장소 / 내용</label><input type="text" id="jobPlace" placeholder="예) 한나와 함께 만듭니다."></div>
     <div class="field"><label>날짜</label><input type="date" id="jobDate"></div>
-    <div class="field"><label>시간 수</label><input type="number" id="jobHours" placeholder="예) 4" min="1" max="24"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+      <div class="field" style="margin:0;"><label>시작 시간</label><input type="time" id="jobStartTime"></div>
+      <div class="field" style="margin:0;"><label>종료 시간</label><input type="time" id="jobEndTime"></div>
+    </div>
     <div class="field"><label>시간당 수령액 (원)</label><input type="number" id="jobPayPerHour" placeholder="예) 8000" value="8000"></div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('modalAddJob')">취소</button>
@@ -777,7 +783,7 @@ async function renderJobs(){
     }
     return `<div class="job-card">
       <div class="job-card-top">
-        <div><div class="job-title">${job.title}</div><div class="job-meta">${job.place}<br>${job.date} · ${job.hours}시간</div></div>
+        <div><div class="job-title">${job.title}</div><div class="job-meta">${job.place}<br>${job.date}${job.start_time?` · ${job.start_time}~${job.end_time}`:(` · ${job.hours}시간`)}</div></div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
           <span class="job-tag">모집 중</span>
           ${isLeader?`<button data-jobid="${job.id}" class="job-del-btn btn-del" style="font-size:11px;padding:3px 8px;">삭제</button>`:''}
@@ -844,16 +850,24 @@ async function submitJob(){
   const title=document.getElementById('jobName').value.trim();
   const place=document.getElementById('jobPlace').value.trim();
   const date=document.getElementById('jobDate').value;
-  const hours=parseFloat(document.getElementById('jobHours').value);
+  const startTime=document.getElementById('jobStartTime').value;
+  const endTime=document.getElementById('jobEndTime').value;
   const pay=parseInt(document.getElementById('jobPayPerHour').value);
-  if(!title||!place||!date||!hours||isNaN(pay)){ showToast('모든 항목을 입력해주세요'); return; }
-  const { error } = await sb.from('jobs').insert({ title, place, date, hours, pay_per_hour:pay, posted_by:store.currentUser.id });
+  if(!title||!place||!date||!startTime||!endTime||isNaN(pay)){ showToast('모든 항목을 입력해주세요'); return; }
+
+  // 시작/종료 시간으로 시간 수 자동 계산
+  const [sh,sm2]=startTime.split(':').map(Number);
+  const [eh,em]=endTime.split(':').map(Number);
+  const hours=((eh*60+em)-(sh*60+sm2))/60;
+  if(hours<=0){ showToast('종료 시간이 시작 시간보다 늦어야 해요'); return; }
+
+  const timeLabel=`${startTime}~${endTime}`;
+  const { error } = await sb.from('jobs').insert({ title, place, date, hours, pay_per_hour:pay, start_time:startTime, end_time:endTime, posted_by:store.currentUser.id });
   if(error){ showToast('등록 중 오류가 발생했어요'); console.error(error); return; }
   closeModal('modalAddJob');
-  ['jobName','jobPlace','jobDate','jobHours'].forEach(id=>document.getElementById(id).value='');
+  ['jobName','jobPlace','jobDate','jobStartTime','jobEndTime'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('jobPayPerHour').value='8000';
   showToast('알바가 등록됐어요!');
-  // 멤버들에게 푸시 알림 발송
   sendPushNotification('🍞 용돈부족 알바!', `${title} 알바가 올라왔어요. 지금 신청하세요!`);
   renderJobs();
 }
@@ -1094,27 +1108,45 @@ function urlBase64ToUint8Array(base64String) {
   return new Uint8Array([...raw].map(c => c.charCodeAt(0)));
 }
 
-async function subscribePush() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+async function requestPushPermission(){
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)){
+    showToast('이 기기는 푸시 알림을 지원하지 않아요'); return;
+  }
+  const permission = await Notification.requestPermission();
+  if(permission !== 'granted'){ showToast('알림 허용이 필요해요'); return; }
+  await subscribePush();
+  document.getElementById('btnPush').style.display = 'none';
+  showToast('알림이 설정됐어요 🔔');
+}
+
+async function subscribePush(){
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)) return;
   try {
     const reg = await navigator.serviceWorker.ready;
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') return;
-
-    const sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-    });
-
-    const { endpoint, keys } = sub.toJSON();
+    let sub = await reg.pushManager.getSubscription();
+    if(!sub){
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+    }
+    const json = sub.toJSON();
     await sb.from('push_subscriptions').upsert({
       user_id: store.currentUser.id,
-      endpoint,
-      p256dh: keys.p256dh,
-      auth: keys.auth
+      endpoint: json.endpoint,
+      p256dh: json.keys.p256dh,
+      auth: json.keys.auth
     }, { onConflict: 'user_id,endpoint' });
-  } catch(e) {
+
+    // 이미 허용됐으면 버튼 숨김, 아니면 표시
+    if(Notification.permission === 'granted'){
+      document.getElementById('btnPush').style.display = 'none';
+    } else {
+      document.getElementById('btnPush').style.display = '';
+    }
+  } catch(e){
     console.log('푸시 구독 실패:', e);
+    document.getElementById('btnPush').style.display = '';
   }
 }
 
