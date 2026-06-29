@@ -585,8 +585,12 @@ function enterApp(){
   document.getElementById('btnAddSlot').style.display=u.role==='leader'?'':'none';
   document.getElementById('txAddCard').style.display=u.role==='leader'?'':'none';
   gotoPage('dash');
-  // 푸시 알림 구독
-  subscribePush();
+  // 푸시 알림 구독 - 권한 있으면 자동, 없으면 버튼 표시
+  if(Notification.permission === 'granted'){
+    subscribePush();
+  } else if(Notification.permission !== 'denied'){
+    document.getElementById('btnPush').style.display = '';
+  }
 }
 
 async function initSession(){
@@ -1126,29 +1130,29 @@ async function subscribePush(){
   if(!('serviceWorker' in navigator) || !('PushManager' in window)) return;
   try {
     const reg = await navigator.serviceWorker.ready;
-    let sub = await reg.pushManager.getSubscription();
-    if(!sub){
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-      });
-    }
+    // 기존 구독 있으면 무조건 해제 후 새로 구독 (VAPID 키 변경 대응)
+    const existing = await reg.pushManager.getSubscription();
+    if(existing) await existing.unsubscribe();
+
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+
     const json = sub.toJSON();
-    await sb.from('push_subscriptions').upsert({
+    const { error } = await sb.from('push_subscriptions').upsert({
       user_id: store.currentUser.id,
       endpoint: json.endpoint,
       p256dh: json.keys.p256dh,
       auth: json.keys.auth
     }, { onConflict: 'user_id,endpoint' });
 
-    // 이미 허용됐으면 버튼 숨김, 아니면 표시
-    if(Notification.permission === 'granted'){
-      document.getElementById('btnPush').style.display = 'none';
-    } else {
-      document.getElementById('btnPush').style.display = '';
-    }
+    if(error) console.error('구독 저장 실패:', error);
+    else console.log('구독 저장 성공');
+
+    document.getElementById('btnPush').style.display = 'none';
   } catch(e){
-    console.log('푸시 구독 실패:', e);
+    console.error('푸시 구독 실패:', e);
     document.getElementById('btnPush').style.display = '';
   }
 }
