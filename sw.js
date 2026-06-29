@@ -31,14 +31,25 @@ self.addEventListener('fetch', e => {
 
 // 푸시 알림 수신
 self.addEventListener('push', e => {
-  let data = { title: '알바부족', body: '새 알림이 있어요!' };
-  try { data = e.data.json(); } catch {}
+  let title = '알바부족';
+  let body = '새 알림이 있어요!';
+  try {
+    if(e.data) {
+      const text = e.data.text();
+      const data = JSON.parse(text);
+      if(data.title) title = data.title;
+      if(data.body) body = data.body;
+    }
+  } catch(err) {
+    console.error('알림 파싱 실패:', err);
+  }
   e.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
+    self.registration.showNotification(title, {
+      body,
       icon: '/-/icon-192.png',
       badge: '/-/icon-192.png',
       vibrate: [200, 100, 200],
+      requireInteraction: false,
     })
   );
 });

@@ -868,7 +868,10 @@ async function submitJob(){
   ['jobName','jobPlace','jobDate','jobStartTime','jobEndTime'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('jobPayPerHour').value='8000';
   showToast('알바가 등록됐어요!');
-  sendPushNotification('🍞 용돈부족 알바!', `${title} 알바가 올라왔어요. 지금 신청하세요!`);
+  sendPushNotification(
+    `🍞 ${title} 알바`,
+    `${date} ${startTime}~${endTime} | 시간당 ${parseInt(document.getElementById('jobPayPerHour').value||'0').toLocaleString()}원`
+  );
   renderJobs();
 }
 
