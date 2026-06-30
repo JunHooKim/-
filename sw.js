@@ -46,23 +46,29 @@ self.addEventListener('push', e => {
   e.waitUntil(
     self.registration.showNotification(title, {
       body,
-      icon: '/-/icon-192.png',
+      icon: '/-/icon-512.png',
       badge: '/-/icon-192.png',
       vibrate: [200, 100, 200],
       requireInteraction: false,
+      data: { url: 'https://junhookim.github.io/-/albaburok_2.html?tab=yd' }
     })
   );
 });
 
-// 알림 클릭 시 앱 열기
+// 알림 클릭 시 용돈부족 탭으로 이동
 self.addEventListener('notificationclick', e => {
   e.notification.close();
+  const targetUrl = e.notification.data?.url || 'https://junhookim.github.io/-/albaburok_2.html';
   e.waitUntil(
-    clients.matchAll({ type: 'window' }).then(list => {
-      for (const c of list) {
-        if (c.url.includes('albaburok') && 'focus' in c) return c.focus();
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for(const c of list) {
+        if(c.url.includes('albaburok_2') && 'focus' in c){
+          c.focus();
+          c.postMessage({ type: 'GOTO_TAB', tab: 'yd' });
+          return;
+        }
       }
-      return clients.openWindow('https://junhookim.github.io/-/albaburok_2.html');
+      return clients.openWindow(targetUrl);
     })
   );
 });

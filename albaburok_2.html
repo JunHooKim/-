@@ -873,8 +873,8 @@ async function submitJob(){
   document.getElementById('jobPayPerHour').value='8000';
   showToast('알바가 등록됐어요!');
   sendPushNotification(
-    `🍞 ${title} 알바`,
-    `${date} ${startTime}~${endTime} | 시간당 ${parseInt(document.getElementById('jobPayPerHour').value||'0').toLocaleString()}원`
+    `[용돈부족] ${title}`,
+    `${date}  ${startTime} ~ ${endTime}\n시간당 ${pay.toLocaleString()}원`
   );
   renderJobs();
 }
@@ -1190,6 +1190,12 @@ initSession();
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
     navigator.serviceWorker.register('/-/sw.js').catch(()=>{});
+  });
+  // 알림 클릭 시 탭 이동 메시지 수신
+  navigator.serviceWorker.addEventListener('message', e => {
+    if(e.data?.type === 'GOTO_TAB' && e.data?.tab){
+      gotoPage(e.data.tab);
+    }
   });
 }
 </script>
