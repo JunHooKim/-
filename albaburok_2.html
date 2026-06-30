@@ -872,9 +872,18 @@ async function submitJob(){
   ['jobName','jobPlace','jobDate','jobStartTime','jobEndTime'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('jobPayPerHour').value='8000';
   showToast('알바가 등록됐어요!');
+  const dayNames = ['일','월','화','수','목','금','토'];
+  const dayStr = dayNames[new Date(date).getDay()];
+  const totalPay = Math.round(hours * pay);
+  const toAmPm = t => {
+    const [h, m] = t.split(':').map(Number);
+    const ampm = h < 12 ? '오전' : '오후';
+    const h12 = h % 12 || 12;
+    return `${ampm} ${h12}:${String(m).padStart(2,'0')}`;
+  };
   sendPushNotification(
     `[용돈부족] ${title}`,
-    `${date}  ${startTime} ~ ${endTime}\n시간당 ${pay.toLocaleString()}원`
+    `${date} (${dayStr})  ${toAmPm(startTime)} ~ ${toAmPm(endTime)}\n총 ${totalPay.toLocaleString()}원`
   );
   renderJobs();
 }
