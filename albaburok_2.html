@@ -684,9 +684,9 @@ function gotoPage(name){
   document.getElementById(pid).classList.add('active');
   document.querySelectorAll('.nav-item')[idx]?.classList.add('active');
   if(name==='dash') renderDash();
-  if(name==='yd'){ renderJobs(); markReadJobs(); }
+  if(name==='yd'){ markReadJobs().then(()=>{ renderJobs(); updateBadges(); }); }
   if(name==='assign') renderSlots();
-  if(name==='requests'){ renderRequests(); markReadAdmin(); updateBadges(); }
+  if(name==='requests'){ markReadAdmin().then(()=>{ renderRequests(); updateBadges(); }); }
   if(name==='admin'){ renderAdmin(); updateBadges(); }
 }
 
@@ -874,29 +874,33 @@ async function renderJobs(){
 async function updateBadges(){
   const isLeader = store.currentUser?.role==='leader';
 
-  // 용돈부족 배지: 읽지 않은 댓글 (리더: 전체 미체크, 멤버: 새 댓글)
-  const { data: reads } = await sb.from('user_reads').select('*').eq('user_id', store.currentUser.id).single();
-  const lastRead = reads?.last_read_jobs ? new Date(reads.last_read_jobs) : new Date(0);
+  // user_reads 조회 (없으면 기본값)
+  const { data: reads } = await sb.from('user_reads').select('*').eq('user_id', store.currentUser.id).maybeSingle();
+  const lastReadJobs = reads?.last_read_jobs ? new Date(reads.last_read_jobs) : new Date(0);
 
-  const { data: newComments } = await sb.from('job_comments').select('id').gt('created_at', lastRead.toISOString()).neq('user_id', store.currentUser.id);
-  const ydCount = newComments?.length || 0;
+  // 용돈부족 배지: 마지막 방문 이후 새로 올라온 알바 글 수
+  const { data: newJobs } = await sb.from('jobs')
+    .select('id')
+    .gt('created_at', lastReadJobs.toISOString());
+  const ydCount = newJobs?.length || 0;
   const badgeYd = document.getElementById('badgeYd');
   if(ydCount > 0){ badgeYd.textContent = ydCount > 99 ? '99+' : ydCount; badgeYd.style.display=''; }
   else badgeYd.style.display='none';
 
   if(isLeader){
     // 관리 배지: 가입 대기 + 미체크 댓글
-    const { data: pendingUsers } = await sb.from('profiles').select('id').eq('status','pending');
-    const { data: unchecked } = await sb.from('job_comments').select('id').eq('is_checked', false);
+    const [{ data: pendingUsers }, { data: unchecked }] = await Promise.all([
+      sb.from('profiles').select('id').eq('status','pending'),
+      sb.from('job_comments').select('id').eq('is_checked', false)
+    ]);
     const adminCount = (pendingUsers?.length||0) + (unchecked?.length||0);
     const badgeAdmin = document.getElementById('badgeAdmin');
     if(adminCount > 0){ badgeAdmin.textContent = adminCount > 99?'99+':adminCount; badgeAdmin.style.display=''; }
     else badgeAdmin.style.display='none';
 
     // 고객신청 배지
-    const { data: lastReadAdmin } = await sb.from('user_reads').select('last_read_admin').eq('user_id', store.currentUser.id).single();
-    const lastReadAdminTime = lastReadAdmin?.last_read_admin ? new Date(lastReadAdmin.last_read_admin) : new Date(0);
-    const { data: newReqs } = await sb.from('customer_requests').select('id').gt('created_at', lastReadAdminTime.toISOString());
+    const lastReadAdmin = reads?.last_read_admin ? new Date(reads.last_read_admin) : new Date(0);
+    const { data: newReqs } = await sb.from('customer_requests').select('id').gt('created_at', lastReadAdmin.toISOString());
     const reqCount = newReqs?.length||0;
     const badgeReqs = document.getElementById('badgeRequests');
     if(reqCount > 0){ badgeReqs.textContent = reqCount>99?'99+':reqCount; badgeReqs.style.display=''; }
@@ -905,10 +909,18 @@ async function updateBadges(){
 }
 
 async function markReadJobs(){
-  await sb.from('user_reads').upsert({ user_id: store.currentUser.id, last_read_jobs: new Date().toISOString() }, { onConflict: 'user_id' });
+  const now = new Date().toISOString();
+  await sb.from('user_reads').upsert(
+    { user_id: store.currentUser.id, last_read_jobs: now },
+    { onConflict: 'user_id' }
+  );
 }
 async function markReadAdmin(){
-  await sb.from('user_reads').upsert({ user_id: store.currentUser.id, last_read_admin: new Date().toISOString() }, { onConflict: 'user_id' });
+  const now = new Date().toISOString();
+  await sb.from('user_reads').upsert(
+    { user_id: store.currentUser.id, last_read_admin: now },
+    { onConflict: 'user_id' }
+  );
 }
 
 // ── 스레드 ────────────────────────────────────────
