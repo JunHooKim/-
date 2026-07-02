@@ -979,7 +979,7 @@ async function loadComments(jobId){
       const checked = btn.getAttribute('data-checked') === 'true';
       await sb.from('job_comments').update({is_checked: !checked}).eq('id', cid);
       await loadComments(jobId);
-      updateBadges();
+      await updateBadges();
     });
   });
 
@@ -995,7 +995,7 @@ async function submitComment(){
   if(error){ showToast('댓글 등록 중 오류가 발생했어요'); return; }
   document.getElementById('commentInput').value = '';
   await loadComments(currentJobId);
-  updateBadges();
+  await updateBadges();
 }
 
 async function deleteJob(jobId){
