@@ -65,6 +65,8 @@ body { font-family: -apple-system,'Pretendard',sans-serif; background:var(--bg);
 .nav-item svg { width:22px; height:22px; stroke:var(--text-3); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; transition:stroke 0.15s; }
 .nav-item.active { color:var(--green); }
 .nav-item.active svg { stroke:var(--green); }
+.nav-badge-wrap { position:relative; display:inline-flex; }
+.nav-badge { position:absolute; top:-4px; right:-8px; background:#E24B4A; color:#fff; font-size:10px; font-weight:700; min-width:16px; height:16px; border-radius:99px; display:flex; align-items:center; justify-content:center; padding:0 4px; line-height:1; }
 
 .page { display:none; }
 .page.active { display:block; }
@@ -93,6 +95,27 @@ body { font-family: -apple-system,'Pretendard',sans-serif; background:var(--bg);
 .feed-amt.in { color:var(--green-dark); }
 .feed-amt.out { color:var(--orange-dark); }
 .empty-state { padding:2rem; text-align:center; color:var(--text-3); font-size:13px; }
+
+/* 스레드 */
+.thread-modal { max-width:480px; width:100%; max-height:85vh; display:flex; flex-direction:column; border-radius:18px; background:var(--surface); padding:0; overflow:hidden; }
+.thread-header { padding:1rem 1.2rem; border-bottom:0.5px solid var(--border); }
+.thread-header h3 { font-size:16px; font-weight:700; margin-bottom:2px; }
+.thread-header .thread-meta { font-size:12px; color:var(--text-3); }
+.thread-comments { flex:1; overflow-y:auto; padding:1rem; display:flex; flex-direction:column; gap:10px; }
+.comment-row { display:flex; gap:8px; align-items:flex-start; }
+.comment-avatar { width:28px; height:28px; border-radius:99px; background:var(--green-light); color:var(--green-dark); font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.comment-bubble { flex:1; }
+.comment-name { font-size:11px; color:var(--text-3); margin-bottom:3px; display:flex; align-items:center; gap:6px; }
+.comment-text { background:var(--bg); border-radius:0 10px 10px 10px; padding:8px 12px; font-size:13px; line-height:1.5; display:inline-block; max-width:100%; }
+.comment-row.mine .comment-bubble { display:flex; flex-direction:column; align-items:flex-end; }
+.comment-row.mine .comment-text { background:var(--green-light); border-radius:10px 0 10px 10px; color:var(--green-dark); }
+.comment-row.mine .comment-name { justify-content:flex-end; }
+.comment-checked { background:var(--green); color:#fff; border:none; border-radius:99px; font-size:11px; font-weight:600; padding:2px 8px; cursor:pointer; }
+.comment-unchecked { background:var(--bg); color:var(--text-3); border:0.5px solid var(--border-md); border-radius:99px; font-size:11px; font-weight:600; padding:2px 8px; cursor:pointer; }
+.thread-input { padding:10px 1rem; border-top:0.5px solid var(--border); display:flex; gap:8px; }
+.thread-input textarea { flex:1; border:0.5px solid var(--border-md); border-radius:var(--radius-sm); padding:8px 12px; font-size:14px; background:var(--bg); resize:none; height:40px; font-family:inherit; outline:none; }
+.thread-input textarea:focus { border-color:var(--green); background:#fff; }
+.thread-send { background:var(--green); color:#fff; border:none; border-radius:var(--radius-sm); padding:0 14px; font-size:13px; font-weight:600; cursor:pointer; flex-shrink:0; }
 
 /* TX 입력 */
 .tx-add-card { background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius); padding:14px; margin-bottom:12px; }
@@ -369,16 +392,28 @@ body { font-family: -apple-system,'Pretendard',sans-serif; background:var(--bg);
       <svg viewBox="0 0 24 24"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>홈
     </button>
     <button class="nav-item" onclick="gotoPage('yd')">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M14.5 9a2.5 2.5 0 0 0-5 0c0 3 5 3 5 6a2.5 2.5 0 0 1-5 0"/><path d="M12 6.5v1M12 16.5v1"/></svg>용돈부족
+      <div class="nav-badge-wrap">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M14.5 9a2.5 2.5 0 0 0-5 0c0 3 5 3 5 6a2.5 2.5 0 0 1-5 0"/><path d="M12 6.5v1M12 16.5v1"/></svg>
+        <span class="nav-badge" id="badgeYd" style="display:none;"></span>
+      </div>
+      용돈부족
     </button>
     <button class="nav-item" onclick="gotoPage('assign')">
       <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>알바배정
     </button>
     <button class="nav-item" id="navAdmin" style="display:none;" onclick="gotoPage('admin')">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>관리
+      <div class="nav-badge-wrap">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span class="nav-badge" id="badgeAdmin" style="display:none;"></span>
+      </div>
+      관리
     </button>
     <button class="nav-item" id="navRequests" style="display:none;" onclick="gotoPage('requests')">
-      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>고객신청
+      <div class="nav-badge-wrap">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span class="nav-badge" id="badgeRequests" style="display:none;"></span>
+      </div>
+      고객신청
     </button>
   </div>
 </div>
@@ -469,6 +504,26 @@ body { font-family: -apple-system,'Pretendard',sans-serif; background:var(--bg);
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('modalEditName')">취소</button>
       <button class="btn-confirm" onclick="confirmEditName()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 스레드 모달 -->
+<div class="modal-bg" id="modalThread">
+  <div class="thread-modal">
+    <div class="thread-header">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <h3 id="threadTitle"></h3>
+          <div class="thread-meta" id="threadMeta"></div>
+        </div>
+        <button onclick="closeModal('modalThread')" style="background:none;border:none;font-size:22px;color:var(--text-3);cursor:pointer;padding:0 0 0 10px;">×</button>
+      </div>
+    </div>
+    <div class="thread-comments" id="threadComments"></div>
+    <div class="thread-input">
+      <textarea id="commentInput" placeholder="댓글 달기..." rows="1"></textarea>
+      <button class="thread-send" onclick="submitComment()">전송</button>
     </div>
   </div>
 </div>
@@ -585,12 +640,15 @@ function enterApp(){
   document.getElementById('btnAddSlot').style.display=u.role==='leader'?'':'none';
   document.getElementById('txAddCard').style.display=u.role==='leader'?'':'none';
   gotoPage('dash');
-  // 푸시 알림 구독 - 권한 있으면 자동, 없으면 버튼 표시
+  // 푸시 알림 구독
   if(Notification.permission === 'granted'){
     subscribePush();
   } else if(Notification.permission !== 'denied'){
     document.getElementById('btnPush').style.display = '';
   }
+  // 배지 주기적 업데이트 (30초마다)
+  updateBadges();
+  setInterval(updateBadges, 30000);
 }
 
 async function initSession(){
@@ -626,10 +684,10 @@ function gotoPage(name){
   document.getElementById(pid).classList.add('active');
   document.querySelectorAll('.nav-item')[idx]?.classList.add('active');
   if(name==='dash') renderDash();
-  if(name==='yd') renderJobs();
+  if(name==='yd'){ renderJobs(); markReadJobs(); }
   if(name==='assign') renderSlots();
-  if(name==='requests') renderRequests();
-  if(name==='admin') renderAdmin();
+  if(name==='requests'){ renderRequests(); markReadAdmin(); updateBadges(); }
+  if(name==='admin'){ renderAdmin(); updateBadges(); }
 }
 
 // ── DASHBOARD ────────────────────────────────────
@@ -763,29 +821,28 @@ function getApprovedSummary(jobs){
 async function renderJobs(){
   const jobs = await fetchJobs();
   store.jobs=jobs;
+
+  // 댓글 수 조회
+  const { data: allComments } = await sb.from('job_comments').select('id, job_id, is_checked, created_at');
+  const commentMap = {};
+  (allComments||[]).forEach(c=>{ if(!commentMap[c.job_id]) commentMap[c.job_id]={total:0, unchecked:0}; commentMap[c.job_id].total++; if(!c.is_checked) commentMap[c.job_id].unchecked++; });
+
   const list=document.getElementById('jobList');
   const banner=document.getElementById('settleBanner');
   const summary=getApprovedSummary(jobs);
   const isLeader=store.currentUser?.role==='leader';
   banner.style.display=(isLeader&&Object.keys(summary).length>0)?'':'none';
+
   if(!jobs.length){
     list.innerHTML='<div class="empty-state" style="background:var(--surface);border-radius:var(--radius);border:0.5px solid var(--border);padding:2rem;">등록된 알바가 없어요</div>';
-    return;
+    updateBadges(); return;
   }
-  const iClock=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>`;
-  const iCheck=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
   list.innerHTML=jobs.map(job=>{
-    const myApp=job.applications.find(a=>a.userId===store.currentUser.id);
-    let action='';
-    if(myApp){
-      if(myApp.settled) action=`<div class="applied-tag">정산 완료</div>`;
-      else if(myApp.status==='approved') action=`<div class="approved-tag">${iCheck} 승인됨 · ${fmt(job.pay_per_hour*job.hours)} 정산 예정</div>`;
-      else if(myApp.status==='denied') action=`<div class="applied-tag">신청이 거절됐어요</div>`;
-      else action=`<div class="applied-tag">${iClock} 신청 완료 · 승인 대기 중</div>`;
-    } else {
-      action=`<button class="btn-apply" data-applyid="${job.id}">신청하기</button>`;
-    }
-    return `<div class="job-card">
+    const cm = commentMap[job.id]||{total:0,unchecked:0};
+    const commentBadge = cm.unchecked > 0 ? `<span style="background:#E24B4A;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;margin-left:4px;">${cm.unchecked}</span>` : '';
+    const commentCount = cm.total > 0 ? `<span style="color:var(--text-3);font-size:12px;">댓글 ${cm.total}개${commentBadge}</span>` : '';
+    return `<div class="job-card" data-jobid="${job.id}" style="cursor:pointer;">
       <div class="job-card-top">
         <div><div class="job-title">${job.title}</div><div class="job-meta">${job.place}<br>${job.date}${job.start_time?` · ${job.start_time}~${job.end_time}`:(` · ${job.hours}시간`)}</div></div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
@@ -797,15 +854,136 @@ async function renderJobs(){
         <span>시간당 수령 <span class="job-pay-hi">${fmt(job.pay_per_hour)}</span></span>
         <span style="color:var(--text-3);font-size:11px;">총 ${fmt(job.pay_per_hour*job.hours)}</span>
       </div>
-      ${action}
+      <div style="margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        ${commentCount || '<span style="color:var(--text-3);font-size:12px;">첫 댓글을 달아보세요</span>'}
+        <span style="color:var(--green-dark);font-size:12px;font-weight:600;">댓글 달기 →</span>
+      </div>
     </div>`;
   }).join('');
+
   list.querySelectorAll('.job-del-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>deleteJob(btn.getAttribute('data-jobid')));
+    btn.addEventListener('click', e=>{ e.stopPropagation(); deleteJob(btn.getAttribute('data-jobid')); });
   });
-  list.querySelectorAll('[data-applyid]').forEach(btn=>{
-    btn.addEventListener('click', ()=>applyJob(btn.getAttribute('data-applyid')));
+  list.querySelectorAll('.job-card[data-jobid]').forEach(card=>{
+    card.addEventListener('click', ()=>openThread(card.getAttribute('data-jobid')));
   });
+  updateBadges();
+}
+
+// ── 배지 업데이트 ─────────────────────────────────
+async function updateBadges(){
+  const isLeader = store.currentUser?.role==='leader';
+
+  // 용돈부족 배지: 읽지 않은 댓글 (리더: 전체 미체크, 멤버: 새 댓글)
+  const { data: reads } = await sb.from('user_reads').select('*').eq('user_id', store.currentUser.id).single();
+  const lastRead = reads?.last_read_jobs ? new Date(reads.last_read_jobs) : new Date(0);
+
+  const { data: newComments } = await sb.from('job_comments').select('id').gt('created_at', lastRead.toISOString()).neq('user_id', store.currentUser.id);
+  const ydCount = newComments?.length || 0;
+  const badgeYd = document.getElementById('badgeYd');
+  if(ydCount > 0){ badgeYd.textContent = ydCount > 99 ? '99+' : ydCount; badgeYd.style.display=''; }
+  else badgeYd.style.display='none';
+
+  if(isLeader){
+    // 관리 배지: 가입 대기 + 미체크 댓글
+    const { data: pendingUsers } = await sb.from('profiles').select('id').eq('status','pending');
+    const { data: unchecked } = await sb.from('job_comments').select('id').eq('is_checked', false);
+    const adminCount = (pendingUsers?.length||0) + (unchecked?.length||0);
+    const badgeAdmin = document.getElementById('badgeAdmin');
+    if(adminCount > 0){ badgeAdmin.textContent = adminCount > 99?'99+':adminCount; badgeAdmin.style.display=''; }
+    else badgeAdmin.style.display='none';
+
+    // 고객신청 배지
+    const { data: lastReadAdmin } = await sb.from('user_reads').select('last_read_admin').eq('user_id', store.currentUser.id).single();
+    const lastReadAdminTime = lastReadAdmin?.last_read_admin ? new Date(lastReadAdmin.last_read_admin) : new Date(0);
+    const { data: newReqs } = await sb.from('customer_requests').select('id').gt('created_at', lastReadAdminTime.toISOString());
+    const reqCount = newReqs?.length||0;
+    const badgeReqs = document.getElementById('badgeRequests');
+    if(reqCount > 0){ badgeReqs.textContent = reqCount>99?'99+':reqCount; badgeReqs.style.display=''; }
+    else badgeReqs.style.display='none';
+  }
+}
+
+async function markReadJobs(){
+  await sb.from('user_reads').upsert({ user_id: store.currentUser.id, last_read_jobs: new Date().toISOString() }, { onConflict: 'user_id' });
+}
+async function markReadAdmin(){
+  await sb.from('user_reads').upsert({ user_id: store.currentUser.id, last_read_admin: new Date().toISOString() }, { onConflict: 'user_id' });
+}
+
+// ── 스레드 ────────────────────────────────────────
+let currentJobId = null;
+
+async function openThread(jobId){
+  currentJobId = jobId;
+  const job = store.jobs.find(j=>j.id===jobId);
+  if(!job) return;
+  document.getElementById('threadTitle').textContent = job.title;
+  document.getElementById('threadMeta').textContent = `${job.date}${job.start_time?' · '+job.start_time+'~'+job.end_time:''} · 총 ${fmt(job.pay_per_hour*job.hours)}`;
+  document.getElementById('commentInput').value = '';
+  await loadComments(jobId);
+  openModal('modalThread');
+  await markReadJobs();
+  updateBadges();
+}
+
+async function loadComments(jobId){
+  const { data: comments } = await sb.from('job_comments')
+    .select('*, profiles(name)')
+    .eq('job_id', jobId)
+    .order('created_at', {ascending:true});
+
+  const isLeader = store.currentUser?.role==='leader';
+  const container = document.getElementById('threadComments');
+
+  if(!comments?.length){
+    container.innerHTML='<div class="empty-state">첫 댓글을 달아보세요!</div>';
+    return;
+  }
+
+  container.innerHTML = comments.map(c=>{
+    const isMine = c.user_id === store.currentUser.id;
+    const checkBtn = isLeader
+      ? `<button class="${c.is_checked?'comment-checked':'comment-unchecked'}" data-cid="${c.id}" data-checked="${c.is_checked}">${c.is_checked?'✓ 확인됨':'확인'}</button>`
+      : (c.is_checked ? `<span style="font-size:11px;color:var(--green-dark);">✓ 확인됨</span>` : '');
+    return `<div class="comment-row ${isMine?'mine':''}">
+      ${!isMine?`<div class="comment-avatar">${(c.profiles?.name||'?')[0]}</div>`:''}
+      <div class="comment-bubble">
+        <div class="comment-name">
+          ${!isMine?`<span>${c.profiles?.name||'?'}</span>`:''}
+          <span style="color:var(--text-3);font-size:10px;">${new Date(c.created_at).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</span>
+          ${checkBtn}
+        </div>
+        <div class="comment-text">${c.content}</div>
+      </div>
+      ${isMine?`<div class="comment-avatar">${(store.currentUser.name||'?')[0]}</div>`:''}
+    </div>`;
+  }).join('');
+
+  // 확인 버튼 이벤트
+  container.querySelectorAll('[data-cid]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const cid = btn.getAttribute('data-cid');
+      const checked = btn.getAttribute('data-checked') === 'true';
+      await sb.from('job_comments').update({is_checked: !checked}).eq('id', cid);
+      await loadComments(jobId);
+      updateBadges();
+    });
+  });
+
+  container.scrollTop = container.scrollHeight;
+}
+
+async function submitComment(){
+  const content = document.getElementById('commentInput').value.trim();
+  if(!content || !currentJobId) return;
+  const { error } = await sb.from('job_comments').insert({
+    job_id: currentJobId, user_id: store.currentUser.id, content
+  });
+  if(error){ showToast('댓글 등록 중 오류가 발생했어요'); return; }
+  document.getElementById('commentInput').value = '';
+  await loadComments(currentJobId);
+  updateBadges();
 }
 
 async function deleteJob(jobId){
